@@ -5,7 +5,7 @@ Contact Info
 
 Group Members & Email Addresses:
 
-    Holden Kennedy, holdenleekennedy06
+    Holden Kennedy, holdenleekennedy06@gmail.com
     Person 2, person2@uky.edu
 
 Versioning
