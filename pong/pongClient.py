@@ -91,7 +91,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         for paddle in [playerPaddleObj, opponentPaddleObj]:
             if paddle.moving == "down":
                 if paddle.rect.bottomleft[1] < screenHeight-10:
-                    paddle.rect.y += paddle.speed
+                    paddle.rect.y += paddle.speed # increases because the top left is (0,0)
             elif paddle.moving == "up":
                 if paddle.rect.topleft[1] > 10:
                     paddle.rect.y -= paddle.speed
@@ -201,6 +201,7 @@ def startScreen():
     titleLabel = tk.Label(image=image)
     titleLabel.grid(column=0, row=0, columnspan=2)
 
+    # For inputting IP & Port of the server
     ipLabel = tk.Label(text="Server IP:")
     ipLabel.grid(column=0, row=1, sticky="W", padx=8)
 
@@ -222,7 +223,7 @@ def startScreen():
     app.mainloop()
 
 if __name__ == "__main__":
-    #startScreen()
+    startScreen()
     
     # Uncomment the line below if you want to play the game without a server to see how it should work
     # the startScreen() function should call playGame with the arguments given to it by the server this is
