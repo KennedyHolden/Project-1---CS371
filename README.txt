@@ -1,9 +1,11 @@
+Date: 11/1/2026
+
 Contact Info
 ============
 
 Group Members & Email Addresses:
 
-    Person 1, person1@uky.edu
+    Holden Kennedy, holdenleekennedy06
     Person 2, person2@uky.edu
 
 Versioning
