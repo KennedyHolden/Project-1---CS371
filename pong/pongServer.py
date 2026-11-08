@@ -16,6 +16,8 @@ import threading
 # I suggest you use the sync variable in pongClient.py to determine how out of sync your two
 # clients are and take actions to resync the games
 
+
+
 # Pull the IP address and port number from the user from the other function
 # Push it into a queue
 # When the queue has two items, pop them and start a new thread for each client
