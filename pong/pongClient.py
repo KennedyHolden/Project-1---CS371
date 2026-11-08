@@ -289,8 +289,13 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     # Close this window and start the game with the info passed to you from the server
     app.withdraw()     # Hides the window (we'll kill it later)
 
+    NumPlayers:int = 0
+
     # Updated to pass the plauer paddle variable. 
-    playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
+    while True:
+        if (NumPlayers == 2):
+            playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
+            return
 
     app.quit()         # Kills the window
 
@@ -332,4 +337,4 @@ if __name__ == "__main__":
     # Uncomment the line below if you want to play the game without a server to see how it should work
     # the startScreen() function should call playGame with the arguments given to it by the server this is
     # here for demo purposes only
-    playGame(640, 480,"left",socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+    #playGame(640, 480,"left",socket.socket(socket.AF_INET, socket.SOCK_STREAM))
