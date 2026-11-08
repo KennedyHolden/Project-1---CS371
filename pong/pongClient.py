@@ -1,15 +1,33 @@
 # =================================================================================================
-# Contributing Authors:	    <Anyone who touched the code>
-# Email Addresses:          <Your uky.edu email addresses>
-# Date:                     <The date the file was last edited>
-# Purpose:                  <How this file contributes to the project>
+# Contributing Authors:     Chenxiang Jiang
+# Email Addresses:          cji233@uky.edu
+# Date:                     11/8/2026
+# Purpose:                  Implemented client-server communication for passing player inputs
+#                           in the multiplayer Pong game. Sends paddle positions and movement
+#                           commands (UP, DOWN, NOP) using TCP sockets and JSON. Also handles
+#                           receiving, parsing, and storing game information to support
+#                           synchronization between players.
+# Misc:                     Used threading and message buffering to prevent network operations
+#                           from interrupting gameplay.
+# =================================================================================================
+
+# =================================================================================================
+# Contributing Authors:	    Holden Kennedy  ,
+# Email Addresses:          hlke229@uky.edu ,
+# Date:                     11/7/2026
+# Purpose:                  This is the client code. It will handle all client responsibilities including sending and receiving data.
 # Misc:                     <Not Required.  Anything else you might want to include>
 # =================================================================================================
+
+from xmlrpc import client
 
 import pygame
 import tkinter as tk
 import sys
 import socket
+import json
+import threading
+import queue
 
 from assets.code.helperCode import *
 
@@ -59,6 +77,58 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     rScore = 0
 
     sync = 0
+
+    
+    send_queue = queue.Queue(maxsize=1)
+
+    def network_sender():
+        while True:
+            message = send_queue.get()
+
+            try:
+                data = json.dumps(message) + "\n"
+                client.sendall(data.encode("utf-8"))
+            except OSError as e:
+                print("Network error:", e)
+                break
+
+    threading.Thread(
+        target=network_sender,
+        daemon=True
+    ).start()
+    
+    incoming_messages = queue.Queue()
+
+    def network_receiver():
+        buffer = ""
+
+        while True:
+            try:
+                data = client.recv(4096)
+
+                if not data:
+                    print("Server disconnected")
+                    break
+
+                buffer += data.decode("utf-8")
+
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+
+                    if line:
+                        message = json.loads(line)
+                        incoming_messages.put(message)
+
+            except (OSError, ValueError) as e:
+                print("Receive error:", e)
+                break
+
+    threading.Thread(
+        target=network_receiver,
+        daemon=True
+    ).start()
+
+
 
     while True:
         # Wiping the screen
@@ -131,7 +201,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 bounceSound.play()
                 ball.hitWall()
             
-            pygame.draw.rect(screen, WHITE, ball)
+            pygame.draw.rect(screen, WHITE, ball.rect)
             # ==== End Ball Logic =================================================================
 
         # Drawing the dotted line in the center
@@ -152,6 +222,25 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # then you are ahead of them in time, if theirs is larger, they are ahead of you, and you need to
         # catch up (use their info)
         sync += 1
+       
+        if sync % 6 == 0:
+            message = {
+                "type": "paddle",
+                "side": playerPaddle,
+                "paddle_y": playerPaddleObj.rect.y,
+                "input": playerPaddleObj.moving or "NOP",
+                "sync": sync
+            }
+
+            try:
+                send_queue.put_nowait(message)
+            except queue.Full:
+                pass
+
+
+        
+
+
         # =========================================================================================
         # Send your server update here at the end of the game loop to sync your game with your
         # opponent's game
@@ -177,18 +266,33 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     # You don't have to use SOCK_STREAM, use what you think is best
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    # Connect to the server. 
+    client.connect((ip, int(port)))
+    
     # Get the required information from your server (screen width, height & player paddle, "left or "right)
 
+    DataInFormat = client.recv(1024).decode() 
+    #Parses the data for the hight, width and player paddle.
+    ScreenWidth, ScreenHeight, playerPaddle = DataInFormat.split(",") 
+
+    # Got errors on these being strings, converting to int fixes this. 
+    IntScreenWidth = int(ScreenWidth) 
+    IntScreenHeight = int(ScreenHeight) 
 
     # If you have messages you'd like to show the user use the errorLabel widget like so
-    errorLabel.config(text=f"Some update text. You input: IP: {ip}, Port: {port}")
+    errorLabel.config(text=f"It Works!: Paddle: {playerPaddle} IP: {ip}, Port: {port}")
+
+    #errorLabel.config(text=f"Some update text. You input: IP: {ip}, Port: {port}")
     # You may or may not need to call this, depending on how many times you update the label
     errorLabel.update()     
 
     # Close this window and start the game with the info passed to you from the server
-    #app.withdraw()     # Hides the window (we'll kill it later)
-    #playGame(screenWidth, screenHeight, ("left"|"right"), client)  # User will be either left or right paddle
-    #app.quit()         # Kills the window
+    app.withdraw()     # Hides the window (we'll kill it later)
+
+    # Updated to pass the plauer paddle variable. 
+    playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
+
+    app.quit()         # Kills the window
 
 
 # This displays the opening screen, you don't need to edit this (but may if you like)
