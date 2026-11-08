@@ -296,7 +296,7 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
         PlayerCountInfo = client.recv(1024).decode()
         NumPlayers:int = int(PlayerCountInfo)
         print(f"NumPlayers: {NumPlayers}")
-        if (NumPlayers == 2):
+        if (NumPlayers%2 == 0):
             playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
             return
         else:
