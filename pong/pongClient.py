@@ -289,13 +289,17 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     # Close this window and start the game with the info passed to you from the server
     app.withdraw()     # Hides the window (we'll kill it later)
 
-    NumPlayers:int = 0
+    PlayerCountInfo = client.recv(1024).decode()
+    NumPlayers:int = int(PlayerCountInfo)
 
     # Updated to pass the plauer paddle variable. 
     while True:
         if (NumPlayers == 2):
             playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
             return
+        else:
+            errorLabel.config(text=f"Waiting for another player to join...")
+            errorLabel.update()
 
     app.quit()         # Kills the window
 

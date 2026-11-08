@@ -136,6 +136,8 @@ while True:
 
             # Send required info for playgame function in pongClient.py
             conn.send(f"800,600,{PaddleSide}".encode()) # Hard Coded. 
+            if NumClients == 2:
+                conn.send(f"{NumClients}".encode())
 
         else:
             # message from existing client
