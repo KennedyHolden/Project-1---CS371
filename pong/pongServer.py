@@ -63,7 +63,7 @@ def testThread(player1, player2):
 
 # A boolean to use to know if the connection is left or right. 
 LeftPaddle:int = 0
-NumClients:int = 0
+NumClients:int = 1
 paddle_positions = {
     "left": 300,
     "right": 300
@@ -136,8 +136,7 @@ while True:
 
             # Send required info for playgame function in pongClient.py
             conn.send(f"800,600,{PaddleSide}".encode()) # Hard Coded. 
-            if NumClients == 2:
-                conn.send(f"{NumClients}".encode())
+            conn.send(f"{NumClients}".encode())
 
         else:
             # message from existing client
