@@ -41,7 +41,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     pygame.init()
 
     # Constants
-    WHITE = (255,255,255)~
+    WHITE = (255,255,255)
     clock = pygame.time.Clock()
     scoreFont = pygame.font.Font("./assets/fonts/pong-score.ttf", 32)
     winFont = pygame.font.Font("./assets/fonts/visitor.ttf", 48)
