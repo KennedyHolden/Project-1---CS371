@@ -1,10 +1,12 @@
 # =================================================================================================
-# Contributing Authors:	    <Anyone who touched the code>
-# Email Addresses:          <Your uky.edu email addresses>
-# Date:                     <The date the file was last edited>
-# Purpose:                  <How this file contributes to the project>
+# Contributing Authors:	    Holden Kennedy  ,
+# Email Addresses:          hlke229@uky.edu ,
+# Date:                     11/7/2026
+# Purpose:                  This is the client code. It will handle all client responsibilities including sending and receiving data.
 # Misc:                     <Not Required.  Anything else you might want to include>
 # =================================================================================================
+
+from xmlrpc import client
 
 import pygame
 import tkinter as tk
@@ -177,18 +179,33 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     # You don't have to use SOCK_STREAM, use what you think is best
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    # Connect to the server. 
+    client.connect((ip, int(port)))
+    
     # Get the required information from your server (screen width, height & player paddle, "left or "right)
 
+    DataInFormat = client.recv(1024).decode() 
+    #Parses the data for the hight, width and player paddle.
+    ScreenWidth, ScreenHeight, playerPaddle = DataInFormat.split(",") 
+
+    # Got errors on these being strings, converting to int fixes this. 
+    IntScreenWidth = int(ScreenWidth) 
+    IntScreenHeight = int(ScreenHeight) 
 
     # If you have messages you'd like to show the user use the errorLabel widget like so
-    errorLabel.config(text=f"Some update text. You input: IP: {ip}, Port: {port}")
+    errorLabel.config(text=f"It Works!: Paddle: {playerPaddle} IP: {ip}, Port: {port}")
+
+    #errorLabel.config(text=f"Some update text. You input: IP: {ip}, Port: {port}")
     # You may or may not need to call this, depending on how many times you update the label
     errorLabel.update()     
 
     # Close this window and start the game with the info passed to you from the server
-    #app.withdraw()     # Hides the window (we'll kill it later)
-    #playGame(screenWidth, screenHeight, ("left"|"right"), client)  # User will be either left or right paddle
-    #app.quit()         # Kills the window
+    app.withdraw()     # Hides the window (we'll kill it later)
+
+    # Updated to pass the plauer paddle variable. 
+    playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
+
+    app.quit()         # Kills the window
 
 
 # This displays the opening screen, you don't need to edit this (but may if you like)
