@@ -300,8 +300,11 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
             playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
             return
         else:
+            print(f"Test 1")
             errorLabel.config(text=f"Waiting for another player to join...")
+            print(f"Test 2")
             errorLabel.update()
+            print(f"Test 3")
 
     app.quit()         # Kills the window
 
