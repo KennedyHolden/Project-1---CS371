@@ -1,4 +1,17 @@
 # =================================================================================================
+# Contributing Authors:     Chenxiang Jiang
+# Email Addresses:          cji233@uky.edu
+# Date:                     11/8/2026
+# Purpose:                  Implemented client-server communication for passing player inputs
+#                           in the multiplayer Pong game. Sends paddle positions and movement
+#                           commands (UP, DOWN, NOP) using TCP sockets and JSON. Also handles
+#                           receiving, parsing, and storing game information to support
+#                           synchronization between players.
+# Misc:                     Used threading and message buffering to prevent network operations
+#                           from interrupting gameplay.
+# =================================================================================================
+
+# =================================================================================================
 # Contributing Authors:	    Holden Kennedy  ,
 # Email Addresses:          hlke229@uky.edu , 
 # Date:                     11/7/2026
@@ -9,6 +22,7 @@
 import socket
 import threading
 import select #added for select.select()
+import json
 
 # Use this file to write your server logic
 # You will need to support at least two clients
@@ -46,10 +60,40 @@ def testThread(player1, player2):
 # A boolean to use to know if the connection is left or right. 
 LeftPaddle:int = 0
 NumClients:int = 0
+paddle_positions = {
+    "left": 300,
+    "right": 300
+}
+player_inputs = {
+    "left": "NOP",
+    "right": "NOP"
+}
 
 def UseDataFromClient(addr, data):
-    # We can add logic to use the data the server gets.
-    return
+    try:
+        message = json.loads(data)
+    except json.JSONDecodeError:
+        print("Could not parse message:", repr(data))
+        return
+
+    if message.get("type") == "paddle":
+        side = message["side"]
+        paddle_y = message["paddle_y"]
+        
+        input_command = message.get("input", "NOP")
+
+        if side in player_inputs and input_command in ("up", "down", "NOP"):
+            player_inputs[side] = input_command
+            print("PLAYER INPUTS:", player_inputs)
+
+        
+        if side in paddle_positions and isinstance(paddle_y, int):
+            paddle_positions[side] = paddle_y
+
+            print("Current paddle positions:", paddle_positions)
+
+        print(f"Player {side} paddle is at Y = {paddle_y}")
+
 
 
 # /*
@@ -64,6 +108,7 @@ server_socket.listen()
 
 # list of sockets to monitor for reading
 inputs = [server_socket]
+buffers = {}
 
 print(f"Server listening on {HOST}:{PORT}")
 
@@ -75,6 +120,7 @@ while True:
             conn, addr = server_socket.accept()
             print(f"[NEW CONNECTION] {addr}")
             inputs.append(conn)
+            buffers[conn] = ""
 
             # Assign Left or Right paddle
             if NumClients%2 == 0:      # Mod 2 so that if we have multiple clients we can use this for another game. 
@@ -95,15 +141,37 @@ while True:
                 # Will need a reconnection function if it happens often
                 print("[DISCONNECTED]")
                 inputs.remove(s)
+                buffers.pop(s, None)
                 s.close()
 
                 NumClients -= 1 #Update Variable
             else:
-                print("Received:", data.decode())
+             buffers[s] += data.decode("utf-8")
 
-                # Ths is an empty function that can be updated later. 
-                UseDataFromClient(s.getpeername(), data.decode())
-                s.send(b"Echo: " + data)
+             while "\n" in buffers[s]:
+                 message, buffers[s] = buffers[s].split("\n", 1)
+
+             if message:
+                print("Received:", message)
+                UseDataFromClient(s.getpeername(), message)
+                
+                update = {
+                "type": "paddles",
+                "left_y": paddle_positions["left"],
+                "right_y": paddle_positions["right"]
+                    }
+
+                outgoing = (json.dumps(update) + "\n").encode("utf-8")
+
+                for connection in inputs[1:]:
+                    try:
+                                connection.sendall(outgoing)
+                    except OSError as e:
+                     print("Error sending update:", e)
+
+                print("SENT PADDLES:", update)
+
+
 
 
 # */

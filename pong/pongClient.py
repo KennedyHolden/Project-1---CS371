@@ -1,4 +1,17 @@
 # =================================================================================================
+# Contributing Authors:     Chenxiang Jiang
+# Email Addresses:          cji233@uky.edu
+# Date:                     11/8/2026
+# Purpose:                  Implemented client-server communication for passing player inputs
+#                           in the multiplayer Pong game. Sends paddle positions and movement
+#                           commands (UP, DOWN, NOP) using TCP sockets and JSON. Also handles
+#                           receiving, parsing, and storing game information to support
+#                           synchronization between players.
+# Misc:                     Used threading and message buffering to prevent network operations
+#                           from interrupting gameplay.
+# =================================================================================================
+
+# =================================================================================================
 # Contributing Authors:	    Holden Kennedy  ,
 # Email Addresses:          hlke229@uky.edu ,
 # Date:                     11/7/2026
@@ -12,6 +25,9 @@ import pygame
 import tkinter as tk
 import sys
 import socket
+import json
+import threading
+import queue
 
 from assets.code.helperCode import *
 
@@ -25,7 +41,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     pygame.init()
 
     # Constants
-    WHITE = (255,255,255)
+    WHITE = (255,255,255)~
     clock = pygame.time.Clock()
     scoreFont = pygame.font.Font("./assets/fonts/pong-score.ttf", 32)
     winFont = pygame.font.Font("./assets/fonts/visitor.ttf", 48)
@@ -61,6 +77,58 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     rScore = 0
 
     sync = 0
+
+    
+    send_queue = queue.Queue(maxsize=1)
+
+    def network_sender():
+        while True:
+            message = send_queue.get()
+
+            try:
+                data = json.dumps(message) + "\n"
+                client.sendall(data.encode("utf-8"))
+            except OSError as e:
+                print("Network error:", e)
+                break
+
+    threading.Thread(
+        target=network_sender,
+        daemon=True
+    ).start()
+    
+    incoming_messages = queue.Queue()
+
+    def network_receiver():
+        buffer = ""
+
+        while True:
+            try:
+                data = client.recv(4096)
+
+                if not data:
+                    print("Server disconnected")
+                    break
+
+                buffer += data.decode("utf-8")
+
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+
+                    if line:
+                        message = json.loads(line)
+                        incoming_messages.put(message)
+
+            except (OSError, ValueError) as e:
+                print("Receive error:", e)
+                break
+
+    threading.Thread(
+        target=network_receiver,
+        daemon=True
+    ).start()
+
+
 
     while True:
         # Wiping the screen
@@ -133,7 +201,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 bounceSound.play()
                 ball.hitWall()
             
-            pygame.draw.rect(screen, WHITE, ball)
+            pygame.draw.rect(screen, WHITE, ball.rect)
             # ==== End Ball Logic =================================================================
 
         # Drawing the dotted line in the center
@@ -154,6 +222,25 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # then you are ahead of them in time, if theirs is larger, they are ahead of you, and you need to
         # catch up (use their info)
         sync += 1
+       
+        if sync % 6 == 0:
+            message = {
+                "type": "paddle",
+                "side": playerPaddle,
+                "paddle_y": playerPaddleObj.rect.y,
+                "input": playerPaddleObj.moving or "NOP",
+                "sync": sync
+            }
+
+            try:
+                send_queue.put_nowait(message)
+            except queue.Full:
+                pass
+
+
+        
+
+
         # =========================================================================================
         # Send your server update here at the end of the game loop to sync your game with your
         # opponent's game
