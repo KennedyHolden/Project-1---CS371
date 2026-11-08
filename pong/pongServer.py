@@ -43,6 +43,8 @@ waitingClients = []
 def handleMultiple(cliConn, addr):
     waitingClients.append([cliConn, addr])
     if len(waitingClients) < 2:
+        print( "Waiting for another client to connect...")
+        cliConn.send("Waiting for another client to connect...\n".encode())
         return
     newGame = threading.Thread(target = testThread, args = (waitingClients[0], waitingClients[1]), daemon = False)
     newGame.start()
