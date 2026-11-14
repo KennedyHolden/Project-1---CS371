@@ -78,7 +78,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
     sync = 0
 
-    
+    # Week 1 (Chen):Set up a queue for sending messages to the server, Converts Python dictionaries into JSON. Send those messages to the server through TCP. Uses background thread so sending doesn't block the main game loop.
     send_queue = queue.Queue(maxsize=1)
 
     def network_sender():
@@ -86,25 +86,25 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             message = send_queue.get()
 
             try:
-                data = json.dumps(message) + "\n"
-                client.sendall(data.encode("utf-8"))
+                data = json.dumps(message) + "\n" # converts python dictionary into a JSON string. 
+                client.sendall(data.encode("utf-8")) # sends the JSON string (converted into bytes) to the server through TCP.
             except OSError as e:
                 print("Network error:", e)
                 break
 
-    threading.Thread(
-        target=network_sender,
-        daemon=True
-    ).start()
+    threading.Thread( # Creates a new thread to run the network_sender function in the background, allowing it to send messages without blocking the main game loop.
+        target=network_sender, # tells the thread to run the network_sender function
+        daemon=True #daemon=True means the thread will automatically close when the main program exits
+    ).start() # starts the new thread
     
     incoming_messages = queue.Queue()
 
     def network_receiver():
-        buffer = ""
+        buffer = "" # Creates an empty string  called buffer bc TCP doesn't guarantee that messages will be received in the same chunks they were sent. The buffer is used to store any partial messages that are received, so they can be combined with future data to form complete messages.
 
         while True:
             try:
-                data = client.recv(4096)
+                data = client.recv(4096) # recv() waits until data arrives or the connection closes. 
 
                 if not data:
                     print("Server disconnected")
@@ -113,9 +113,9 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 buffer += data.decode("utf-8")
 
                 while "\n" in buffer:
-                    line, buffer = buffer.split("\n", 1)
+                    line, buffer = buffer.split("\n", 1) # splits the buffer at the first newline character
 
-                    if line:
+                    if line: # checks if the line is not empty, true when it has, false when it doesn't.
                         message = json.loads(line)
                         incoming_messages.put(message)
 
@@ -221,9 +221,9 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # This number should be synchronized between you and your opponent.  If your number is larger
         # then you are ahead of them in time, if theirs is larger, they are ahead of you, and you need to
         # catch up (use their info)
-        sync += 1
+        sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
-        if sync % 6 == 0:
+        if sync % 6 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
@@ -232,7 +232,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 "sync": sync
             }
 
-            try:
+            try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
                 send_queue.put_nowait(message)
             except queue.Full:
                 pass
