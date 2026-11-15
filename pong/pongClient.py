@@ -31,6 +31,8 @@ import queue
 
 from assets.code.helperCode import *
 
+PaddleMovement = "" # Global variable for replacing "paddel.moving"
+
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
 # to suit your needs.
@@ -142,12 +144,18 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_DOWN:
                     #playerPaddleObj.moving = "down"
+
+                    # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
+                    playerPaddleObj.moving = "down"
                     print("Pressed Down")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "DOWN"})
 
                 elif event.key == pygame.K_UP:
                     #playerPaddleObj.moving = "up"
+                    
+                    # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
+                    playerPaddleObj.moving = "up"
                     print("Pressed Up")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "UP"})
@@ -157,7 +165,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             elif event.type == pygame.KEYUP:
                 playerPaddleObj.moving = ""
                 #   Uses the network sender funcion by Chen.
-                send_queue.put_nowait({"action": ""})
+                #send_queue.put_nowait({"action": ""})
 
         # =========================================================================================
         # Your code here to send an update to the server on your paddle's information,
@@ -187,15 +195,15 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
         # Update the player paddle and opponent paddle's location on the screen
         for paddle in [playerPaddleObj, opponentPaddleObj]:
-            if paddle.moving == "down":
+            if PaddleMovement == "down":
                 if paddle.rect.bottomleft[1] < screenHeight-10:
                     paddle.rect.y += paddle.speed # increases because the top left is (0,0)
-            elif paddle.moving == "up":
+            elif PaddleMovement == "up":
                 if paddle.rect.topleft[1] > 10:
                     paddle.rect.y -= paddle.speed
 
         # If the game is over, display the win message
-        if lScore > 4 or rScore > 4:
+        if lScore > 10 or rScore > 10:
             winText = "Player 1 Wins! " if lScore > 4 else "Player 2 Wins! "
             textSurface = winFont.render(winText, False, WHITE, (0,0,0))
             textRect = textSurface.get_rect()
