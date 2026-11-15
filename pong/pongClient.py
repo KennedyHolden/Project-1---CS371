@@ -192,6 +192,8 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
         pass
 
+        # PaddleMovement is a variable that I added (HK) to replace the playerPaddleObj.moving variable.   
+        # This seperates the clients inputs from there game. We can change this so that it uses the server's inputts as this variable.  
 
         # Update the player paddle and opponent paddle's location on the screen
         for paddle in [playerPaddleObj, opponentPaddleObj]:
