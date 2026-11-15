@@ -23,7 +23,6 @@ import socket
 import threading
 import select #added for select.select()
 import json
-import time # Added so I can add small delays. 
 from turtle import left
 
 # Use this file to write your server logic
@@ -140,9 +139,7 @@ while True:
             conn.send(f"800,600,{PaddleSide}".encode()) # Hard Coded. 
 
 
-            time.sleep(0.1) # Added since the clinet was receiving these messages as the same one. 
-
-
+           
             for connection in inputs[1:]:
                 try:
                     connection.sendall(f"{NumClients}".encode())
