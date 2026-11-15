@@ -147,47 +147,47 @@ while True:
                     print("Error sending update:", e)
             #conn.send(f"{NumClients}".encode())
 
+        
         else:
             # message from existing client
-            #conn.send(f"{NumClients}".encode())
             data = s.recv(1024)
+
             if not data:
-                # This will happen if the connection breaks.
-                # Will need a reconnection function if it happens often
                 print("[DISCONNECTED]")
                 inputs.remove(s)
                 buffers.pop(s, None)
                 s.close()
 
-                NumClients -= 1 #Update Variable
+                NumClients -= 1
+
             else:
-             buffers[s] += data.decode("utf-8")
+                buffers[s] += data.decode("utf-8")
 
-             while "\n" in buffers[s]:
-                 message, buffers[s] = buffers[s].split("\n", 1)
+                while "\n" in buffers[s]:
+                    message, buffers[s] = buffers[s].split("\n", 1)
 
-             if message:
-                print("Received:", message)
-                UseDataFromClient(s.getpeername(), message)
-                
-                update = {
-                "type": "paddles",
-                "left_y": paddle_positions["left"],
-                "right_y": paddle_positions["right"],
-                # Added these, The client will uses these 
-                "left_input": player_inputs["left"],
-                "right_input": player_inputs["right"]
-                    }
+                    if message:
+                        print("Received:", message)
+                        UseDataFromClient(s.getpeername(), message)
 
-                outgoing = (json.dumps(update) + "\n").encode("utf-8")
+                        update = {
+                            "type": "paddles",
+                            "left_y": paddle_positions["left"],
+                            "right_y": paddle_positions["right"],
+                            "left_input": player_inputs["left"],
+                            "right_input": player_inputs["right"]
+                        }
 
-                for connection in inputs[1:]:
-                    try:
+                        outgoing = (json.dumps(update) + "\n").encode("utf-8")
+
+                        for connection in inputs[1:]:
+                            try:
                                 connection.sendall(outgoing)
-                    except OSError as e:
-                     print("Error sending update:", e)
+                            except OSError as e:
+                                print("Error sending update:", e)
 
-                print("SENT PADDLES:", update)
+                        print("SENT PADDLES:", update)
+
 
 
 
