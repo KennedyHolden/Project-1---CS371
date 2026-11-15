@@ -23,6 +23,8 @@ import socket
 import threading
 import select #added for select.select()
 import json
+import time # Added so I can add small delays. 
+from turtle import left
 
 # Use this file to write your server logic
 # You will need to support at least two clients
@@ -136,6 +138,11 @@ while True:
 
             # Send required info for playgame function in pongClient.py
             conn.send(f"800,600,{PaddleSide}".encode()) # Hard Coded. 
+
+
+            time.sleep(0.1) # Added since the clinet was receiving these messages as the same one. 
+
+
             for connection in inputs[1:]:
                 try:
                     connection.sendall(f"{NumClients}".encode())
@@ -169,7 +176,10 @@ while True:
                 update = {
                 "type": "paddles",
                 "left_y": paddle_positions["left"],
-                "right_y": paddle_positions["right"]
+                "right_y": paddle_positions["right"],
+                # Added these, The client will uses these 
+                "left_input": player_inputs["left"],
+                "right_input": player_inputs["right"]
                     }
 
                 outgoing = (json.dumps(update) + "\n").encode("utf-8")

@@ -79,7 +79,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     sync = 0
 
     # Week 1 (Chen):Set up a queue for sending messages to the server, Converts Python dictionaries into JSON. Send those messages to the server through TCP. Uses background thread so sending doesn't block the main game loop.
-    send_queue = queue.Queue(maxsize=1)
+    send_queue = queue.Queue(maxsize=10) # I changed the maxsize to 10 so it doesn't block so often. 
 
     def network_sender():
         while True:
@@ -141,13 +141,23 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_DOWN:
-                    playerPaddleObj.moving = "down"
+                    #playerPaddleObj.moving = "down"
+                    print("Pressed Down")
+                    #   Uses the network sender funcion by Chen.
+                    send_queue.put_nowait({"action": "DOWN"})
 
                 elif event.key == pygame.K_UP:
-                    playerPaddleObj.moving = "up"
+                    #playerPaddleObj.moving = "up"
+                    print("Pressed Up")
+                    #   Uses the network sender funcion by Chen.
+                    send_queue.put_nowait({"action": "UP"})
+                    
+
 
             elif event.type == pygame.KEYUP:
                 playerPaddleObj.moving = ""
+                #   Uses the network sender funcion by Chen.
+                send_queue.put_nowait({"action": ""})
 
         # =========================================================================================
         # Your code here to send an update to the server on your paddle's information,
@@ -156,6 +166,24 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         
         
         # =========================================================================================
+
+        # latest State initalized to None. Error: "cannot access local variable 'latest_state' where it is not associated with a value"
+        latest_state = None
+
+
+        # Added this section to clear the network queue. 
+        while not incoming_messages.empty():
+            try:
+                latest_state = incoming_messages.get_nowait()
+            except queue.Empty:
+                break
+                
+        if latest_state:
+             print("Server says:", latest_state) #Debug
+
+
+        pass
+
 
         # Update the player paddle and opponent paddle's location on the screen
         for paddle in [playerPaddleObj, opponentPaddleObj]:
