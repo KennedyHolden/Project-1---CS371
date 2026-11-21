@@ -31,7 +31,12 @@ import queue
 
 from assets.code.helperCode import *
 
-PaddleMovement = "" # Global variable for replacing "paddel.moving"
+
+PaddleMovement = "" # HK: Global variable for replacing "paddel.moving"
+WinningValue = 2 # HK: Replaces the magic value. How many points is needed to win. 
+
+
+
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
 # where you should add to the code are marked.  Feel free to change any part of this project
@@ -79,6 +84,9 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     rScore = 0
 
     sync = 0
+
+    # Variable to keep track of Rematch Requests
+    RematchRequestVar = 0
 
     # Week 1 (Chen):Set up a queue for sending messages to the server, Converts Python dictionaries into JSON. Send those messages to the server through TCP. Uses background thread so sending doesn't block the main game loop.
     send_queue = queue.Queue(maxsize=10) # I changed the maxsize to 10 so it doesn't block so often. 
@@ -159,6 +167,11 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                     print("Pressed Up")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "UP"})
+
+                    # Only possible after game is over
+                elif event.key == pygame.K_p and (lScore > WinningValue or rScore > WinningValue):
+                    print("Pressed P - asking for a Rematch") 
+                    send_queue.put_nowait({"action": "Rematch", "side": playerPaddle})
                     
 
 
@@ -183,6 +196,21 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         while not incoming_messages.empty():
             try:
                 latest_state = incoming_messages.get_nowait()
+
+                #HK: Resets the vales when players agree to restart
+                if "RematchRequestVar" in latest_state:
+                    RematchRequestVar = latest_state["RematchRequestVar"]
+
+                # Puts all values back to inital
+                if latest_state.get("restart"):
+                    lScore = 0
+                    rScore = 0
+                    RematchRequestVar = 0
+                    leftPaddle.rect.y = paddleStartPosY
+                    rightPaddle.rect.y = paddleStartPosY
+                    ball.reset(nowGoing="left")
+
+
             except queue.Empty:
                 break
                 
@@ -205,12 +233,29 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                     paddle.rect.y -= paddle.speed
 
         # If the game is over, display the win message
-        if lScore > 10 or rScore > 10:
-            winText = "Player 1 Wins! " if lScore > 4 else "Player 2 Wins! "
+        if lScore > WinningValue or rScore > WinningValue:
+            winText = "Player 1 Wins! " if lScore > WinningValue else "Player 2 Wins! "
             textSurface = winFont.render(winText, False, WHITE, (0,0,0))
             textRect = textSurface.get_rect()
             textRect.center = ((screenWidth/2), screenHeight/2)
             winMessage = screen.blit(textSurface, textRect)
+
+            # HK: For rematches, copied the style from the win message
+
+            if RematchRequestVar == 1: # If someone requests rematch or no one has yet
+
+                        # If string is too long. It will cut off by the screen. Using "\n" will overlap the win message.
+                rematchText = "1 player ready for rematch"
+            else:
+                rematchText = "Press P for a rematch"
+
+            rematchSurface = winFont.render(rematchText, False, WHITE, (0,0,0))
+            rematchRect = rematchSurface.get_rect()
+            rematchRect.center = ((screenWidth/2), (screenHeight/2) + 50)
+            screen.blit(rematchSurface, rematchRect)
+
+
+    
         else:
 
             # ==== Ball Logic =====================================================================
