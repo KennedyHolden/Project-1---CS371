@@ -32,7 +32,8 @@ from turtle import left
 # I suggest you use the sync variable in pongClient.py to determine how out of sync your two
 # clients are and take actions to resync the games
 
-
+# constant for the screen width and height
+screenWidth, screenHeight = 800, 600
 
 # Pull the IP address and port number from the user from the other function
 # Push it into a queue
@@ -65,6 +66,7 @@ def testThread(player1, player2):
 # A boolean to use to know if the connection is left or right. 
 LeftPaddle:int = 0
 NumClients:int = 0
+# Initialize the paddle positions and player inputs
 paddle_positions = {
     "left": 300,
     "right": 300
@@ -73,6 +75,7 @@ player_inputs = {
     "left": "NOP",
     "right": "NOP"
 }
+ball_position = [screenWidth // 2, screenHeight // 2]
 
 # Dictionary for the ball and score
 game_state = {
@@ -101,6 +104,20 @@ def UseDataFromClient(addr, data):
         paddle_y = message.get("paddle_y")
         input_command = message.get("input", "NOP")
 
+<<<<<<< HEAD
+        if side in player_inputs and input_command in ("UP", "DOWN", "NOP"):
+            player_inputs[side] = input_command
+            # print("PLAYER INPUTS:", player_inputs) DEBUG
+            # print(f"Player {side} input command: {input_command}") DEBUG
+            # Update player position
+            match player_inputs[side]:
+                case "UP":
+                    print("Moving paddle up for side:", side)
+                    paddle_positions[side] = max(0, paddle_positions[side] - 20)
+                case "DOWN":
+                    print("Moving paddle down for side:", side)
+                    paddle_positions[side] = min(screenHeight - 100, paddle_positions[side] + 20)
+=======
         # Only updates using the player with the higher sync value.
         client_sync = message.get("sync", 0)
         if client_sync > game_state["sync"]:
@@ -111,6 +128,7 @@ def UseDataFromClient(addr, data):
             game_state["ball_vy"] = message.get("ball_vy", game_state["ball_vy"])
             game_state["lScore"] = message.get("lScore", game_state["lScore"])
             game_state["rScore"] = message.get("rScore", game_state["rScore"])
+>>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
 
         if side in player_inputs:
             if input_command in ("UP", "DOWN", "NOP"):
@@ -188,7 +206,7 @@ while True:
             NumClients+= 1 # Updating Variable.
 
             # Send required info for playgame function in pongClient.py
-            conn.send(f"800,600,{PaddleSide}".encode()) # Hard Coded. 
+            conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
 
 
            
