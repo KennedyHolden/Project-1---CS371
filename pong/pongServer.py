@@ -74,6 +74,9 @@ player_inputs = {
     "right": "NOP"
 }
 
+# HK: A variable to decide if players agree to a rematch. 
+RematchRequestVar = set()
+
 def UseDataFromClient(addr, data):
     try:
         message = json.loads(data)
@@ -105,6 +108,24 @@ def UseDataFromClient(addr, data):
             print("Current paddle positions:", paddle_positions)
 
         print(f"Player {side} paddle is at Y = {paddle_positions[side]}")
+
+
+    # HK: An alternative "if" branch for deciding a rematch
+    elif message.get("action") == "Rematch":
+        side = message.get("side")
+
+        # Both sides have to agree.
+        if side in ("left", "right"):
+            RematchRequestVar.add(side)
+
+            print(f"Rematch requested by {side}. Total: {len(RematchRequestVar)}") #Prints info on the decision
+
+            if len(RematchRequestVar) >= 2:
+                RematchRequestVar.clear() # Reset for next game
+
+                return True # Both players agree
+
+    return False
 
 
 
@@ -175,14 +196,18 @@ while True:
 
                     if message:
                         print("Received:", message)
-                        UseDataFromClient(s.getpeername(), message)
+                        
+                        # HK: Gets the packet from the client when they press "p"
+                        RestartGame = UseDataFromClient(s.getpeername(), message)
 
                         update = {
                             "type": "paddles",
                             "left_y": paddle_positions["left"],
                             "right_y": paddle_positions["right"],
                             "left_input": player_inputs["left"],
-                            "right_input": player_inputs["right"]
+                            "right_input": player_inputs["right"],
+                            "RematchRequestVar": len(RematchRequestVar),
+                            "restart": RestartGame
                         }
 
                         outgoing = (json.dumps(update) + "\n").encode("utf-8")
