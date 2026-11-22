@@ -143,19 +143,15 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_DOWN:
-                    #playerPaddleObj.moving = "down"
-
                     # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
-                    playerPaddleObj.moving = "down"
+                    playerPaddleObj.moving = "DOWN"
                     print("Pressed Down")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "DOWN"})
 
                 elif event.key == pygame.K_UP:
-                    #playerPaddleObj.moving = "up"
-                    
                     # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
-                    playerPaddleObj.moving = "up"
+                    playerPaddleObj.moving = "UP"
                     print("Pressed Up")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "UP"})
@@ -177,12 +173,19 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
         # latest State initalized to None. Error: "cannot access local variable 'latest_state' where it is not associated with a value"
         latest_state = None
-
+        #latestLeft = None
+        #latestRight = None
 
         # Added this section to clear the network queue. 
+        # Omar - reusing it to make the player and opponent paddle position themselves based on the latest input  
         while not incoming_messages.empty():
             try:
                 latest_state = incoming_messages.get_nowait()
+                if latest_state and latest_state.get("type") == "paddles":
+                    print("Received paddle positions:", latest_state)
+                    leftPaddle.rect.y = latest_state.get("left_y")
+                    rightPaddle.rect.y = latest_state.get("right_y")
+                    print("Updated paddle positions: Left:", leftPaddle.rect.y, "Right:", rightPaddle.rect.y)
             except queue.Empty:
                 break
                 
@@ -191,6 +194,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
 
         pass
+        
 
         # PaddleMovement is a variable that I added (HK) to replace the playerPaddleObj.moving variable.   
         # This seperates the clients inputs from there game. We can change this so that it uses the server's inputts as this variable.  

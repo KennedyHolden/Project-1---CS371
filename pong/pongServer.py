@@ -87,17 +87,24 @@ def UseDataFromClient(addr, data):
         
         input_command = message.get("input", "NOP")
 
-        if side in player_inputs and input_command in ("up", "down", "NOP"):
+        if side in player_inputs and input_command in ("UP", "DOWN", "NOP"):
             player_inputs[side] = input_command
-            print("PLAYER INPUTS:", player_inputs)
+            # print("PLAYER INPUTS:", player_inputs) DEBUG
+            # print(f"Player {side} input command: {input_command}") DEBUG
+            # Update player position
+            match player_inputs[side]:
+                case "UP":
+                    print("Moving paddle up for side:", side)
+                    paddle_positions[side] = max(0, paddle_positions[side] - 10)
+                case "DOWN":
+                    print("Moving paddle down for side:", side)
+                    paddle_positions[side] = min(600, paddle_positions[side] + 10)
 
         
         if side in paddle_positions and isinstance(paddle_y, int):
-            paddle_positions[side] = paddle_y
-
             print("Current paddle positions:", paddle_positions)
 
-        print(f"Player {side} paddle is at Y = {paddle_y}")
+        print(f"Player {side} paddle is at Y = {paddle_positions[side]}")
 
 
 
