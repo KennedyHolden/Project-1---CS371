@@ -32,7 +32,8 @@ from turtle import left
 # I suggest you use the sync variable in pongClient.py to determine how out of sync your two
 # clients are and take actions to resync the games
 
-
+# constant for the screen width and height
+screenWidth, screenHeight = 800, 600
 
 # Pull the IP address and port number from the user from the other function
 # Push it into a queue
@@ -65,6 +66,7 @@ def testThread(player1, player2):
 # A boolean to use to know if the connection is left or right. 
 LeftPaddle:int = 0
 NumClients:int = 0
+# Initialize the paddle positions and player inputs
 paddle_positions = {
     "left": 300,
     "right": 300
@@ -73,6 +75,7 @@ player_inputs = {
     "left": "NOP",
     "right": "NOP"
 }
+ball_position = [screenWidth // 2, screenHeight // 2]
 
 # HK: A variable to decide if players agree to a rematch. 
 RematchRequestVar = set()
@@ -98,10 +101,10 @@ def UseDataFromClient(addr, data):
             match player_inputs[side]:
                 case "UP":
                     print("Moving paddle up for side:", side)
-                    paddle_positions[side] = max(0, paddle_positions[side] - 10)
+                    paddle_positions[side] = max(0, paddle_positions[side] - 20)
                 case "DOWN":
                     print("Moving paddle down for side:", side)
-                    paddle_positions[side] = min(600, paddle_positions[side] + 10)
+                    paddle_positions[side] = min(screenHeight - 100, paddle_positions[side] + 20)
 
         
         if side in paddle_positions and isinstance(paddle_y, int):
@@ -164,7 +167,7 @@ while True:
             NumClients+= 1 # Updating Variable.
 
             # Send required info for playgame function in pongClient.py
-            conn.send(f"800,600,{PaddleSide}".encode()) # Hard Coded. 
+            conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
 
 
            

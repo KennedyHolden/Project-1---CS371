@@ -268,24 +268,24 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             # If the ball makes it past the edge of the screen, update score, etc.
             if ball.rect.x > screenWidth:
                 lScore += 1
-                pointSound.play()
+                #pointSound.play()
                 ball.reset(nowGoing="left")
             elif ball.rect.x < 0:
                 rScore += 1
-                pointSound.play()
+                #pointSound.play()
                 ball.reset(nowGoing="right")
                 
             # If the ball hits a paddle
             if ball.rect.colliderect(playerPaddleObj.rect):
-                bounceSound.play()
+                #bounceSound.play()
                 ball.hitPaddle(playerPaddleObj.rect.center[1])
             elif ball.rect.colliderect(opponentPaddleObj.rect):
-                bounceSound.play()
+                #bounceSound.play()
                 ball.hitPaddle(opponentPaddleObj.rect.center[1])
                 
             # If the ball hits a wall
             if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
-                bounceSound.play()
+                #bounceSound.play()
                 ball.hitWall()
             
             pygame.draw.rect(screen, WHITE, ball.rect)
@@ -310,13 +310,14 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # catch up (use their info)
         sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
-        if sync % 6 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+        if sync % 3 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
                 "paddle_y": playerPaddleObj.rect.y,
                 "input": playerPaddleObj.moving or "NOP",
-                "sync": sync
+                "sync": sync,
+                "ballPos": [ball.rect.x, ball.rect.y]
             }
 
             try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
@@ -360,7 +361,7 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
 
     DataInFormat = client.recv(1024).decode() 
     #Parses the data for the hight, width and player paddle.
-    ScreenWidth, ScreenHeight, playerPaddle = DataInFormat.split(",") 
+    ScreenWidth, ScreenHeight, playerPaddle = DataInFormat.split(",")
 
     # Got errors on these being strings, converting to int fixes this. 
     IntScreenWidth = int(ScreenWidth) 
