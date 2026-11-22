@@ -128,7 +128,6 @@ def UseDataFromClient(addr, data):
             game_state["ball_vy"] = message.get("ball_vy", game_state["ball_vy"])
             game_state["lScore"] = message.get("lScore", game_state["lScore"])
             game_state["rScore"] = message.get("rScore", game_state["rScore"])
->>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
 
         if side in player_inputs:
             if input_command in ("UP", "DOWN", "NOP"):
