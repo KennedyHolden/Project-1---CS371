@@ -77,6 +77,18 @@ player_inputs = {
 }
 ball_position = [screenWidth // 2, screenHeight // 2]
 
+# Dictionary for the ball and score
+game_state = {
+    "sync": 0,
+    "ball_x": 400,
+    "ball_y": 300,
+    "ball_vx": -5,
+    "ball_vy": 0,
+    "lScore": 0,
+    "rScore": 0
+}
+
+
 # HK: A variable to decide if players agree to a rematch. 
 RematchRequestVar = set()
 
@@ -88,11 +100,11 @@ def UseDataFromClient(addr, data):
         return
 
     if message.get("type") == "paddle":
-        side = message["side"]
-        paddle_y = message["paddle_y"]
-        
+        side = message.get("side")
+        paddle_y = message.get("paddle_y")
         input_command = message.get("input", "NOP")
 
+<<<<<<< HEAD
         if side in player_inputs and input_command in ("UP", "DOWN", "NOP"):
             player_inputs[side] = input_command
             # print("PLAYER INPUTS:", player_inputs) DEBUG
@@ -105,12 +117,28 @@ def UseDataFromClient(addr, data):
                 case "DOWN":
                     print("Moving paddle down for side:", side)
                     paddle_positions[side] = min(screenHeight - 100, paddle_positions[side] + 20)
+=======
+        # Only updates using the player with the higher sync value.
+        client_sync = message.get("sync", 0)
+        if client_sync > game_state["sync"]:
+            game_state["sync"] = client_sync
+            game_state["ball_x"] = message.get("ball_x", game_state["ball_x"])
+            game_state["ball_y"] = message.get("ball_y", game_state["ball_y"])
+            game_state["ball_vx"] = message.get("ball_vx", game_state["ball_vx"])
+            game_state["ball_vy"] = message.get("ball_vy", game_state["ball_vy"])
+            game_state["lScore"] = message.get("lScore", game_state["lScore"])
+            game_state["rScore"] = message.get("rScore", game_state["rScore"])
+>>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
 
-        
-        if side in paddle_positions and isinstance(paddle_y, int):
-            print("Current paddle positions:", paddle_positions)
+        if side in player_inputs:
+            if input_command in ("UP", "DOWN", "NOP"):
+                player_inputs[side] = input_command
 
-        print(f"Player {side} paddle is at Y = {paddle_positions[side]}")
+            if isinstance(paddle_y, int):
+                paddle_positions[side] = max(0, min(550, paddle_y))
+
+            print("Combined player inputs:", player_inputs)
+            print("Combined paddle positions:", paddle_positions)
 
 
     # HK: An alternative "if" branch for deciding a rematch
@@ -125,6 +153,17 @@ def UseDataFromClient(addr, data):
 
             if len(RematchRequestVar) >= 2:
                 RematchRequestVar.clear() # Reset for next game
+
+                #HK: The initial values for the game to reset for. 
+                game_state.update({
+                    "sync": 0,
+                    "ball_x": 400,
+                    "ball_y": 300,
+                    "ball_vx": -5,
+                    "ball_vy": 0,
+                    "lScore": 0,
+                    "rScore": 0
+                })
 
                 return True # Both players agree
 
@@ -210,7 +249,8 @@ while True:
                             "left_input": player_inputs["left"],
                             "right_input": player_inputs["right"],
                             "RematchRequestVar": len(RematchRequestVar),
-                            "restart": RestartGame
+                            "restart": RestartGame,
+                            **game_state  #HK: Add game state into this update message. 
                         }
 
                         outgoing = (json.dumps(update) + "\n").encode("utf-8")

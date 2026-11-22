@@ -32,8 +32,9 @@ import queue
 from assets.code.helperCode import *
 
 
-PaddleMovement = "" # HK: Global variable for replacing "paddel.moving"
-WinningValue = 2 # HK: Replaces the magic value. How many points is needed to win. 
+PaddleMovement:int = "" # HK: Global variable for replacing "paddel.moving"
+WinningValue:int = 2 # HK: Replaces the magic value. How many points is needed to win. 
+BonusSync:int = 5 # HK: A value that is added to sync to help for changing who is in charge. 
 
 
 
@@ -153,14 +154,14 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 if event.key == pygame.K_DOWN:
                     # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
                     playerPaddleObj.moving = "DOWN"
-                    print("Pressed Down")
+                    #print("Pressed Down")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "DOWN"})
 
                 elif event.key == pygame.K_UP:
                     # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
                     playerPaddleObj.moving = "UP"
-                    print("Pressed Up")
+                    #print("Pressed Up")
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "UP"})
 
@@ -195,10 +196,29 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             try:
                 latest_state = incoming_messages.get_nowait()
                 if latest_state and latest_state.get("type") == "paddles":
-                    print("Received paddle positions:", latest_state)
-                    leftPaddle.rect.y = latest_state.get("left_y")
-                    rightPaddle.rect.y = latest_state.get("right_y")
-                    print("Updated paddle positions: Left:", leftPaddle.rect.y, "Right:", rightPaddle.rect.y)
+                    left_input = latest_state.get("left_input", "NOP")
+                    right_input = latest_state.get("right_input", "NOP")
+
+
+                    # HK: An if so that the openent cannot change your positoin whith their delay info. 
+                    if playerPaddle == "right":
+                        leftPaddle.rect.y = latest_state.get("left_y", leftPaddle.rect.y)
+                    else:
+                        rightPaddle.rect.y = latest_state.get("right_y", rightPaddle.rect.y)
+
+                    # HK: Uses the sync variable to decide who has the "True" Ball position and score.
+                    server_sync = latest_state.get("sync", 0)
+                    if server_sync > sync:
+                        sync = server_sync
+                        ball.rect.x = latest_state.get("ball_x", ball.rect.x)
+                        ball.rect.y = latest_state.get("ball_y", ball.rect.y)
+                        ball.xVel = latest_state.get("ball_vx", ball.xVel)
+                        ball.yVel = latest_state.get("ball_vy", ball.yVel)
+                        lScore = latest_state.get("lScore", lScore)
+                        rScore = latest_state.get("rScore", rScore)
+
+                    #print("Left player input:", left_input)
+                    #print("Right player input:", right_input)
 
                 #HK: Resets the vales when players agree to restart
                 if "RematchRequestVar" in latest_state:
@@ -229,12 +249,14 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
         # Update the player paddle and opponent paddle's location on the screen
         for paddle in [playerPaddleObj, opponentPaddleObj]:
-            if PaddleMovement == "down":
-                if paddle.rect.bottomleft[1] < screenHeight-10:
-                    paddle.rect.y += paddle.speed # increases because the top left is (0,0)
-            elif PaddleMovement == "up":
-                if paddle.rect.topleft[1] > 10:
-                    paddle.rect.y -= paddle.speed
+             if playerPaddleObj.moving == "DOWN":
+              if playerPaddleObj.rect.bottom < screenHeight - 10:
+                playerPaddleObj.rect.y += playerPaddleObj.speed
+
+             elif playerPaddleObj.moving == "UP":
+              if playerPaddleObj.rect.top > 10:
+                   playerPaddleObj.rect.y -= playerPaddleObj.speed
+
 
         # If the game is over, display the win message
         if lScore > WinningValue or rScore > WinningValue:
@@ -248,7 +270,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
             if RematchRequestVar == 1: # If someone requests rematch or no one has yet
 
-                        # If string is too long. It will cut off by the screen. Using "\n" will overlap the win message.
+                    # If string is too long. It will cut off by the screen. Using "\n" will overlap the win message.
                 rematchText = "1 player ready for rematch"
             else:
                 rematchText = "Press P for a rematch"
@@ -279,6 +301,9 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             if ball.rect.colliderect(playerPaddleObj.rect):
                 #bounceSound.play()
                 ball.hitPaddle(playerPaddleObj.rect.center[1])
+
+                sync += BonusSync # This is done so that the player who just hit the ball should have the advangage on updating the score and ball positoin.
+            
             elif ball.rect.colliderect(opponentPaddleObj.rect):
                 #bounceSound.play()
                 ball.hitPaddle(opponentPaddleObj.rect.center[1])
@@ -289,6 +314,10 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 ball.hitWall()
             
             pygame.draw.rect(screen, WHITE, ball.rect)
+
+            print(ball.rect.x)
+            print(ball.rect.y)
+            
             # ==== End Ball Logic =================================================================
 
         # Drawing the dotted line in the center
@@ -310,14 +339,29 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # catch up (use their info)
         sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
+<<<<<<< HEAD
         if sync % 3 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+=======
+        if sync % 1 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+>>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
                 "paddle_y": playerPaddleObj.rect.y,
                 "input": playerPaddleObj.moving or "NOP",
                 "sync": sync,
+<<<<<<< HEAD
                 "ballPos": [ball.rect.x, ball.rect.y]
+=======
+
+                # Ball postion + Score
+                "ball_x": ball.rect.x,
+                "ball_y": ball.rect.y,
+                "ball_vx": ball.xVel,
+                "ball_vy": ball.yVel,
+                "lScore": lScore,
+                "rScore": rScore
+>>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
             }
 
             try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
@@ -359,7 +403,7 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     
     # Get the required information from your server (screen width, height & player paddle, "left or "right)
 
-    DataInFormat = client.recv(1024).decode() 
+    DataInFormat = client.recv(4096).decode() 
     #Parses the data for the hight, width and player paddle.
     ScreenWidth, ScreenHeight, playerPaddle = DataInFormat.split(",")
 
