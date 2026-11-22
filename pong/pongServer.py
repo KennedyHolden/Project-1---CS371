@@ -85,29 +85,19 @@ def UseDataFromClient(addr, data):
         return
 
     if message.get("type") == "paddle":
-        side = message["side"]
-        paddle_y = message["paddle_y"]
-        
+        side = message.get("side")
+        paddle_y = message.get("paddle_y")
         input_command = message.get("input", "NOP")
 
-        if side in player_inputs and input_command in ("UP", "DOWN", "NOP"):
-            player_inputs[side] = input_command
-            # print("PLAYER INPUTS:", player_inputs) DEBUG
-            # print(f"Player {side} input command: {input_command}") DEBUG
-            # Update player position
-            match player_inputs[side]:
-                case "UP":
-                    print("Moving paddle up for side:", side)
-                    paddle_positions[side] = max(0, paddle_positions[side] - 10)
-                case "DOWN":
-                    print("Moving paddle down for side:", side)
-                    paddle_positions[side] = min(600, paddle_positions[side] + 10)
+        if side in player_inputs:
+            if input_command in ("UP", "DOWN", "NOP"):
+                player_inputs[side] = input_command
 
-        
-        if side in paddle_positions and isinstance(paddle_y, int):
-            print("Current paddle positions:", paddle_positions)
+            if isinstance(paddle_y, int):
+                paddle_positions[side] = max(0, min(550, paddle_y))
 
-        print(f"Player {side} paddle is at Y = {paddle_positions[side]}")
+            print("Combined player inputs:", player_inputs)
+            print("Combined paddle positions:", paddle_positions)
 
 
     # HK: An alternative "if" branch for deciding a rematch

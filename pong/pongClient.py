@@ -195,10 +195,14 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             try:
                 latest_state = incoming_messages.get_nowait()
                 if latest_state and latest_state.get("type") == "paddles":
-                    print("Received paddle positions:", latest_state)
-                    leftPaddle.rect.y = latest_state.get("left_y")
-                    rightPaddle.rect.y = latest_state.get("right_y")
-                    print("Updated paddle positions: Left:", leftPaddle.rect.y, "Right:", rightPaddle.rect.y)
+                    left_input = latest_state.get("left_input", "NOP")
+                    right_input = latest_state.get("right_input", "NOP")
+
+                    leftPaddle.rect.y = latest_state.get("left_y", leftPaddle.rect.y)
+                    rightPaddle.rect.y = latest_state.get("right_y", rightPaddle.rect.y)
+
+                    print("Left player input:", left_input)
+                    print("Right player input:", right_input)
 
                 #HK: Resets the vales when players agree to restart
                 if "RematchRequestVar" in latest_state:
@@ -229,12 +233,14 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
         # Update the player paddle and opponent paddle's location on the screen
         for paddle in [playerPaddleObj, opponentPaddleObj]:
-            if PaddleMovement == "down":
-                if paddle.rect.bottomleft[1] < screenHeight-10:
-                    paddle.rect.y += paddle.speed # increases because the top left is (0,0)
-            elif PaddleMovement == "up":
-                if paddle.rect.topleft[1] > 10:
-                    paddle.rect.y -= paddle.speed
+             if playerPaddleObj.moving == "DOWN":
+              if playerPaddleObj.rect.bottom < screenHeight - 10:
+                playerPaddleObj.rect.y += playerPaddleObj.speed
+
+             elif playerPaddleObj.moving == "UP":
+              if playerPaddleObj.rect.top > 10:
+                   playerPaddleObj.rect.y -= playerPaddleObj.speed
+
 
         # If the game is over, display the win message
         if lScore > WinningValue or rScore > WinningValue:
@@ -310,7 +316,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # catch up (use their info)
         sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
-        if sync % 6 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+        if sync % 1 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
