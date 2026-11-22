@@ -32,7 +32,7 @@ import queue
 from assets.code.helperCode import *
 
 
-PaddleMovement:int = "" # HK: Global variable for replacing "paddel.moving"
+PaddleMovement = "" # HK: Global variable for replacing "paddel.moving"
 WinningValue:int = 2 # HK: Replaces the magic value. How many points is needed to win. 
 BonusSync:int = 5 # HK: A value that is added to sync to help for changing who is in charge. 
 
