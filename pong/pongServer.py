@@ -23,6 +23,7 @@ import socket
 import threading
 import select #added for select.select()
 import json
+import time # HK: Used to add a delay between the join sever information and sending the num clients. 
 from turtle import left
 
 # Use this file to write your server logic
@@ -192,6 +193,7 @@ while True:
 
             # Send required info for playgame function in pongClient.py
             conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
+            time.sleep(1/120)
 
 
            

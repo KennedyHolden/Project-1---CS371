@@ -228,6 +228,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 if latest_state.get("restart"):
                     lScore = 0
                     rScore = 0
+                    sync = 0
                     RematchRequestVar = 0
                     leftPaddle.rect.y = paddleStartPosY
                     rightPaddle.rect.y = paddleStartPosY
@@ -339,7 +340,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # catch up (use their info)
         sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
-        if sync % 1 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+        if sync % 2 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
