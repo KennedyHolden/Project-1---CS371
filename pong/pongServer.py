@@ -104,20 +104,6 @@ def UseDataFromClient(addr, data):
         paddle_y = message.get("paddle_y")
         input_command = message.get("input", "NOP")
 
-<<<<<<< HEAD
-        if side in player_inputs and input_command in ("UP", "DOWN", "NOP"):
-            player_inputs[side] = input_command
-            # print("PLAYER INPUTS:", player_inputs) DEBUG
-            # print(f"Player {side} input command: {input_command}") DEBUG
-            # Update player position
-            match player_inputs[side]:
-                case "UP":
-                    print("Moving paddle up for side:", side)
-                    paddle_positions[side] = max(0, paddle_positions[side] - 20)
-                case "DOWN":
-                    print("Moving paddle down for side:", side)
-                    paddle_positions[side] = min(screenHeight - 100, paddle_positions[side] + 20)
-=======
         # Only updates using the player with the higher sync value.
         client_sync = message.get("sync", 0)
         if client_sync > game_state["sync"]:

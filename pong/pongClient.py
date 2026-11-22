@@ -339,20 +339,13 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # catch up (use their info)
         sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
-<<<<<<< HEAD
-        if sync % 3 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
-=======
         if sync % 1 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
->>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
                 "paddle_y": playerPaddleObj.rect.y,
                 "input": playerPaddleObj.moving or "NOP",
                 "sync": sync,
-<<<<<<< HEAD
-                "ballPos": [ball.rect.x, ball.rect.y]
-=======
 
                 # Ball postion + Score
                 "ball_x": ball.rect.x,
@@ -361,7 +354,6 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 "ball_vy": ball.yVel,
                 "lScore": lScore,
                 "rScore": rScore
->>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
             }
 
             try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
