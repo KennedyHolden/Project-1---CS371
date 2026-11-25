@@ -78,7 +78,7 @@ def testThread(player1, player2):
 # HK: Variables to use to know if the number of clients 
 NumClients:int = 0
 
-# ?: Initialize the paddle positions, player inputs, and ball position
+# CJ: Stores both players' paddle positions and movement inputs for synchronization.
 paddle_positions = {
     "left": 300,
     "right": 300
@@ -107,7 +107,7 @@ RematchRequestVar = set()
 
 
 # HK: I created this function as empty
-# CJ: 
+# CJ: Parses incoming JSON messages and updates the corresponding player data. 
 def UseDataFromClient(addr, data):
     try:
         message = json.loads(data)
@@ -133,6 +133,7 @@ def UseDataFromClient(addr, data):
             game_state["lScore"] = message.get("lScore", game_state["lScore"])
             game_state["rScore"] = message.get("rScore", game_state["rScore"])
 
+        # CJ: Validates and stores each player's movement input and paddle position.
         if side in player_inputs:
             if input_command in ("UP", "DOWN", "NOP"):
                 player_inputs[side] = input_command
@@ -235,7 +236,7 @@ while True:
 
         
         else:
-            # ?: message from existing client
+            # CJ: Receives data from an existing client and handles disconnections.
             data = s.recv(1024)
 
             if not data:
@@ -247,6 +248,7 @@ while True:
                 NumClients -= 1
 
             else:
+                # CJ: Buffers incoming TCP data until a complete newline-delimited message arrives.
                 buffers[s] += data.decode("utf-8")
 
                 while "\n" in buffers[s]:
@@ -264,7 +266,7 @@ while True:
                 if message:
                     #print("Received:", message) #Debug
                     
-                    # ?: This is the parsed data assigned to variables. 
+                    # CJ: Combines both players' data into a shared update for the clients.
                     update = {
                         "type": "paddles",
                         "left_y": paddle_positions["left"],
@@ -275,7 +277,8 @@ while True:
                         "restart": RestartGame,
                         **game_state  #HK: Add game state into this update message. 
                     }
-
+                    
+                    # CJ: Encodes the shared update as JSON and broadcasts it to connected clients.
                     outgoing = (json.dumps(update) + "\n").encode("utf-8")
 
                     for connection in inputs[1:]:

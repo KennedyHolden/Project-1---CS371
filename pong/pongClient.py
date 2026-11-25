@@ -89,9 +89,10 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     # Variable to keep track of Rematch Requests
     RematchRequestVar = 0
 
-    # Week 1 (Chen):Set up a queue for sending messages to the server, Converts Python dictionaries into JSON. Send those messages to the server through TCP. Uses background thread so sending doesn't block the main game loop.
-    send_queue = queue.Queue(maxsize=10) # I changed the maxsize to 10 so it doesn't block so often. 
+    # CJ: Queues outgoing messages so networking does not interrupt gameplay
+    send_queue = queue.Queue(maxsize=10)    
 
+    # CJ: Converts queued messages into JSON and sends them to the server over TCP.
     def network_sender():
         while True:
             message = send_queue.get()
@@ -103,15 +104,18 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 print("Network error:", e)
                 break
 
-    threading.Thread( # Creates a new thread to run the network_sender function in the background, allowing it to send messages without blocking the main game loop.
-        target=network_sender, # tells the thread to run the network_sender function
-        daemon=True #daemon=True means the thread will automatically close when the main program exits
-    ).start() # starts the new thread
-    
+    # CJ: Runs the sender in a background thread to keep gameplay responsive.
+    threading.Thread( 
+        target=network_sender, 
+        daemon=True
+    ).start()
+
+    # CJ: Stores received server messages for processing by the game loop.
     incoming_messages = queue.Queue()
 
+    # CJ: Receives TCP data and reconstructs complete JSON messages using newline delimiters.
     def network_receiver():
-        buffer = "" # Creates an empty string  called buffer bc TCP doesn't guarantee that messages will be received in the same chunks they were sent. The buffer is used to store any partial messages that are received, so they can be combined with future data to form complete messages.
+        buffer = "" 
 
         while True:
             try:
@@ -134,6 +138,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 print("Receive error:", e)
                 break
 
+    # CJ: Runs the receiver in a background thread to avoid blocking gameplay.
     threading.Thread(
         target=network_receiver,
         daemon=True
@@ -190,7 +195,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         #latestLeft = None
         #latestRight = None
 
-        # Added this section to clear the network queue. 
+        # CJ: Processes queued server updates without blocking the game loop. 
         # Omar - reusing it to make the player and opponent paddle position themselves based on the latest input  
         while not incoming_messages.empty():
             try:
@@ -346,9 +351,10 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # This number should be synchronized between you and your opponent.  If your number is larger
         # then you are ahead of them in time, if theirs is larger, they are ahead of you, and you need to
         # catch up (use their info)
-        sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
-       
-        if sync % 2 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+        sync += 1 
+
+        # CJ: Sends periodic paddle and game-state updates to keep both clients synchronized.
+        if sync % 2 == 0: 
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
@@ -364,8 +370,8 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 "lScore": lScore,
                 "rScore": rScore
             }
-
-            try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
+            # CJ: Skips an outgoing update when the queue is full to prevent blocking.
+            try: 
                 send_queue.put_nowait(message)
             except queue.Full:
                 pass
