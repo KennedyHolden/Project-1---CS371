@@ -1,6 +1,6 @@
 # =================================================================================================
-# Contributing Authors:     Chenxiang Jiang (CJ), Holden Kennedy (HK), Omar Ellala
-# Email Addresses:          cji233@uky.edu, hlke229@uky.edu, Omar.Ellala@uky.edu     ?
+# Contributing Authors:     Chenxiang Jiang (CJ), Holden Kennedy (HK), Omar Ellala (OE)
+# Email Addresses:          cji233@uky.edu, hlke229@uky.edu, Omar.Ellala@uky.edu                ?
 # Date:                     11/24/2026
 
 # Purpose:                  Implemented client-server communication for passing player inputs
@@ -47,6 +47,7 @@ from turtle import left
 # HK: constant for the screen width and height
 screenWidth:int = 800
 screenHeight:int = 600
+RestartGame:bool = False
 
 
 # OE: Pull the IP address and port number from the user from the other function
@@ -185,7 +186,7 @@ def UseDataFromClient(addr, data):
 
 # HK: My inital work started using code from the Socket Programming lectures. Particularly Example 6.
 
-HOST = "0.0.0.0" # "127.0.0.1" # HK: All 0 = Local network.
+HOST = "127.0.0.1" # "0.0.0.0" # "127.0.0.1" # HK: All 0 = Local network.
 PORT = 5000
 
 # Lecture: create TCP server socket
@@ -259,6 +260,8 @@ while True:
                         # HK: Changed to an if so it doesn't constantly change the RestartGam Boolean
                         if UseDataFromClient(s.getpeername(), message):
                             RestartGame = True 
+                        else:
+                            RestartGame = False
 
                 #HK: While looking through the server code I realized this if statment is in the while loop.
                 #   Since the while loop can go infinetly if it gets a bunch of messages I split them. I 
@@ -287,6 +290,8 @@ while True:
                         except OSError as e:
                             print("Error sending update:", e)
 
+
+                    RestartGame = False
                     #print("SENT PADDLES:", update) #Debug
 
 
