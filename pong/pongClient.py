@@ -300,18 +300,26 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 
             # If the ball hits a paddle
             if ball.rect.colliderect(playerPaddleObj.rect):
-                #bounceSound.play()
-                ball.hitPaddle(playerPaddleObj.rect.center[1])
 
-                sync += BonusSync # This is done so that the player who just hit the ball should have the advangage on updating the score and ball positoin.
+                # HK: Only count a hit if the ball is moving towards the players paddle.
+                #   If ball is moving left and player = left or vice versa
+                if (playerPaddle == "left" and ball.xVel < 0) or( playerPaddle == "right" and ball.xVel > 0):
+                    bounceSound.play()
+                    ball.hitPaddle(playerPaddleObj.rect.center[1])
+
+                    # This is done so that the player who just hit the ball should have the advangage on updating the score and ball positoin.
+                    sync += BonusSync 
             
             elif ball.rect.colliderect(opponentPaddleObj.rect):
-                #bounceSound.play()
-                ball.hitPaddle(opponentPaddleObj.rect.center[1])
+                # HK: Only count a hit if the ball is moving towards the players paddle.
+                #   If ball is moving right and player = left or vice versa
+                if (playerPaddle == "left" and ball.xVel < 0) or( playerPaddle == "right" and ball.xVel > 0):
+                    bounceSound.play()
+                    ball.hitPaddle(opponentPaddleObj.rect.center[1])
                 
             # If the ball hits a wall
             if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
-                #bounceSound.play()
+                bounceSound.play()
                 ball.hitWall()
             
             pygame.draw.rect(screen, WHITE, ball.rect)
