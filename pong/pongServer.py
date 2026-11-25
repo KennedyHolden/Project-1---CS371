@@ -203,6 +203,7 @@ print(f"Server listening on {HOST}:{PORT}")
 
 while True:
     readable, _, _ = select.select(inputs, [], [], 1)
+    #print(readable)
     for s in readable:
         if s is server_socket:
             # new client
@@ -225,6 +226,7 @@ while True:
             # HK: Unsure if this is needed, it should help sync the games, splits the starting the playgame function and drawing/starting the game.
             time.sleep(1/120) #HK: Half a frame. Not noticable. 
 
+
             # HK,OE,CJ: Loops through all connectsion in the array and sends the number of clients. 
             #   Must be done since the server connects using the same port and then reassigns the clients. Looping is easiest.
             for connection in inputs[1:]:
@@ -238,7 +240,11 @@ while True:
         
         else:
             # CJ: Receives data from an existing client and handles disconnections.
-            data = s.recv(1024)
+            try:
+                data = s.recv(1024)
+            except (ConnectionResetError, OSError):
+                data = None
+
 
             if not data:
                 print("[DISCONNECTED]")
@@ -247,6 +253,25 @@ while True:
                 s.close()
 
                 NumClients -= 1
+
+                if NumClients == 0:
+                    print("All Players Have Left the Game. Restarting Game")
+
+                    game_state.update({
+                        "sync": 0,
+                        "ball_x": 400,
+                        "ball_y": 300,
+                        "ball_vx": -5,
+                        "ball_vy": 0,
+                        "lScore": 0,
+                        "rScore": 0
+                    })    
+
+                    paddle_positions.update({"left": 300, "right": 300})
+                    player_inputs.update({"left": "NOP", "right": "NOP"})
+                    RematchRequestVar.clear()
+
+
 
             else:
                 # CJ: Buffers incoming TCP data until a complete newline-delimited message arrives.
@@ -257,11 +282,14 @@ while True:
 
                     # HK: Gets the packet from the client when they press "p"
                     if message: 
-                        # HK: Changed to an if so it doesn't constantly change the RestartGam Boolean
-                        if UseDataFromClient(s.getpeername(), message):
-                            RestartGame = True 
-                        else:
-                            RestartGame = False
+
+                        if s in inputs[1:3]:
+
+                            # HK: Changed to an if so it doesn't constantly change the RestartGam Boolean
+                            if UseDataFromClient(s.getpeername(), message):
+                                RestartGame = True 
+                            else:
+                                RestartGame = False
 
                 #HK: While looking through the server code I realized this if statment is in the while loop.
                 #   Since the while loop can go infinetly if it gets a bunch of messages I split them. I 
@@ -278,7 +306,8 @@ while True:
                         "right_input": player_inputs["right"],
                         "RematchRequestVar": len(RematchRequestVar), #HK: The rematch information must be shared aswell.
                         "restart": RestartGame,
-                        **game_state  #HK: Add game state into this update message. 
+                        **game_state 
+                          #HK: Add game state into this update message. 
                     }
                     
                     # CJ: Encodes the shared update as JSON and broadcasts it to connected clients.
