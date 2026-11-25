@@ -220,6 +220,25 @@ while True:
 
             NumClients+= 1 # HK: Updating Variable.
 
+            # HK: This resets the game after the all of the players leave the game. 
+            if NumClients == 0:
+                print("All Players Have Left the Game. Restarting Game")
+
+                # HK: Uses the code from the game reset, there is no race condition so setting sycn to 0 is safe.
+                game_state.update({
+                    "sync": 0,
+                    "ball_x": 400,
+                    "ball_y": 300,
+                    "ball_vx": -5,
+                    "ball_vy": 0,
+                    "lScore": 0,
+                    "rScore": 0
+                })    
+
+                paddle_positions.update({"left": 300, "right": 300})
+                player_inputs.update({"left": "NOP", "right": "NOP"})
+                RematchRequestVar.clear()
+
             # HK: Send required info for playgame function in pongClient.py, values are hard coded when possible
             conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
 
