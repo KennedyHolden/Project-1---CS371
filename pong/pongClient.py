@@ -193,6 +193,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # Added this section to clear the network queue. 
         # Omar - reusing it to make the player and opponent paddle position themselves based on the latest input  
         while not incoming_messages.empty():
+            print("eijfaieghawoigh")
             try:
                 latest_state = incoming_messages.get_nowait()
                 if latest_state and latest_state.get("type") == "paddles":
@@ -217,8 +218,8 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                         lScore = latest_state.get("lScore", lScore)
                         rScore = latest_state.get("rScore", rScore)
 
-                    #print("Left player input:", left_input)
-                    #print("Right player input:", right_input)
+                    print("Left player input:", left_input)
+                    print("Right player input:", right_input)
 
                 #HK: Resets the vales when players agree to restart
                 if "RematchRequestVar" in latest_state:
@@ -314,9 +315,6 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 ball.hitWall()
             
             pygame.draw.rect(screen, WHITE, ball.rect)
-
-            print(ball.rect.x)
-            print(ball.rect.y)
             
             # ==== End Ball Logic =================================================================
 
@@ -339,20 +337,13 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # catch up (use their info)
         sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
        
-<<<<<<< HEAD
-        if sync % 3 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
-=======
         if sync % 1 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
->>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
                 "paddle_y": playerPaddleObj.rect.y,
                 "input": playerPaddleObj.moving or "NOP",
                 "sync": sync,
-<<<<<<< HEAD
-                "ballPos": [ball.rect.x, ball.rect.y]
-=======
 
                 # Ball postion + Score
                 "ball_x": ball.rect.x,
@@ -361,7 +352,6 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 "ball_vy": ball.yVel,
                 "lScore": lScore,
                 "rScore": rScore
->>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
             }
 
             try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
@@ -422,21 +412,20 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     app.withdraw()     # Hides the window (we'll kill it later)
 
 
-
     # Updated to pass the plauer paddle variable. 
     while True:
+        print("Test 1")
         PlayerCountInfo = client.recv(1024).decode()
+        print("Received", PlayerCountInfo)
         NumPlayers:int = int(PlayerCountInfo)
         print(f"NumPlayers: {NumPlayers}")
         if (NumPlayers%2 == 0):
             playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
             return
         else:
-            print(f"Test 1")
             errorLabel.config(text=f"Waiting for another player to join...")
-            print(f"Test 2")
             errorLabel.update()
-            print(f"Test 3")
+            print(f"Test 1")
 
     app.quit()         # Kills the window
 

@@ -23,6 +23,7 @@ import socket
 import threading
 import select #added for select.select()
 import json
+import time
 from turtle import left
 
 # Use this file to write your server logic
@@ -35,36 +36,20 @@ from turtle import left
 # constant for the screen width and height
 screenWidth, screenHeight = 800, 600
 
-# Pull the IP address and port number from the user from the other function
-# Push it into a queue
-# When the queue has two items, pop them and start a new thread for each client
-# Assume socket is using AF_INET (IPv4) and SOCK_STREAM (TCP)
-# Once the two clients are connected, they will be pushed into 
-# a new thread that will handle the game logic for those two clients
-waitingClients = []
-def handleMultiple(cliConn, addr):
-    waitingClients.append([cliConn, addr])
-    if len(waitingClients) < 2:
-        print( "Waiting for another client to connect...")
-        cliConn.send(1)
-        return
-    newGame = threading.Thread(target = testThread, args = (waitingClients[0], waitingClients[1]), daemon = False)
-    newGame.start()
-    waitingClients.pop()
-    waitingClients.pop()
-    return
+HOST = "127.0.0.1"
+PORT = 5000
 
+# create TCP server socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind((HOST, PORT))
+server_socket.listen()
 
-def testThread(player1, player2):
-    print(player1)
-    print(player2)
-    
-
+print(f"Server listening on {HOST}:{PORT}")
 
 # First start, I am using the code from part 2, exmp 6 from the socket lectures.
 
 # A boolean to use to know if the connection is left or right. 
-LeftPaddle:int = 0
 NumClients:int = 0
 # Initialize the paddle positions and player inputs
 paddle_positions = {
@@ -104,7 +89,6 @@ def UseDataFromClient(addr, data):
         paddle_y = message.get("paddle_y")
         input_command = message.get("input", "NOP")
 
-<<<<<<< HEAD
         if side in player_inputs and input_command in ("UP", "DOWN", "NOP"):
             player_inputs[side] = input_command
             # print("PLAYER INPUTS:", player_inputs) DEBUG
@@ -117,7 +101,6 @@ def UseDataFromClient(addr, data):
                 case "DOWN":
                     print("Moving paddle down for side:", side)
                     paddle_positions[side] = min(screenHeight - 100, paddle_positions[side] + 20)
-=======
         # Only updates using the player with the higher sync value.
         client_sync = message.get("sync", 0)
         if client_sync > game_state["sync"]:
@@ -128,7 +111,6 @@ def UseDataFromClient(addr, data):
             game_state["ball_vy"] = message.get("ball_vy", game_state["ball_vy"])
             game_state["lScore"] = message.get("lScore", game_state["lScore"])
             game_state["rScore"] = message.get("rScore", game_state["rScore"])
->>>>>>> 990597067f5dc4ae79580a2b6d551aea2e94ff4f
 
         if side in player_inputs:
             if input_command in ("UP", "DOWN", "NOP"):
@@ -169,104 +151,167 @@ def UseDataFromClient(addr, data):
 
     return False
 
-
-
-# /*
-HOST = "127.0.0.1"
-PORT = 5000
-
-# create TCP server socket
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server_socket.bind((HOST, PORT))
-server_socket.listen()
-
+# Pull the IP address and port number from the user from the other function
+# Push it into a queue
+# When the queue has two items, pop them and start a new thread for each client
+# Assume socket is using AF_INET (IPv4) and SOCK_STREAM (TCP)
+# Once the two clients are connected, they will be pushed into 
+# a new thread that will handle the game logic for those two clients
 # list of sockets to monitor for reading
 inputs = [server_socket]
 buffers = {}
-
-print(f"Server listening on {HOST}:{PORT}")
-
-while True:
-    readable, _, _ = select.select(inputs, [], [], 1)
-    for s in readable:
-        if s is server_socket:
+waitingClients = []
+def handleConnections():
+    while(True):
+        while len(waitingClients) < 2:
+            print( "Waiting for another client to connect...")
             # new client
             conn, addr = server_socket.accept()
             print(f"[NEW CONNECTION] {addr}")
-            inputs.append(conn)
+            waitingClients.append(conn)
             buffers[conn] = ""
 
             # Assign Left or Right paddle
-            if NumClients%2 == 0:      # Mod 2 so that if we have multiple clients we can use this for another game. 
-                PaddleSide = "left"
-            else:
-                PaddleSide = "right"
+            PaddleSide = "left" if len(waitingClients) == 1 else "right"
 
-            NumClients+= 1 # Updating Variable.
-
-            # Send required info for playgame function in pongClient.py
             conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
+            time.sleep(1/60)
+            #conn.send(f"{NumClients}".encode())
+        player_count = str(len(waitingClients)).encode()    
+        
+        for connection in waitingClients:
+            connection.sendall(player_count)
+        newGame = threading.Thread(target = playGame, args = (waitingClients[0], waitingClients[1]), daemon = False)
+        newGame.start()
+        waitingClients.pop()
+        waitingClients.pop()
+        print("number of waiting clients:", len(waitingClients))
+    return
+
+
+
+def playGame(player1, player2):
+    print("Starting a game with client", player1, "and", player2)
+    inputs.append(player1)
+    inputs.append(player2)
+    while (True):
+        readable, _, _ = select.select([player1, player2], [], [], 1)
+        for s in readable:
+                data = s.recv(1024)
+            
+                if not data:
+                    print("[DISCONNECTED]")
+                    inputs.remove(s)
+                    buffers.pop(s, None)
+                    s.close()
+
+                else:
+                    buffers[s] += data.decode("utf-8")
+
+                    while "\n" in buffers[s]:
+                        message, buffers[s] = buffers[s].split("\n", 1)
+
+                        if message:
+                            print("Received:", message)
+                            
+                            # HK: Gets the packet from the client when they press "p"
+                            RestartGame = UseDataFromClient(s.getpeername(), message)
+
+                            update = {
+                                "type": "paddles",
+                                "left_y": paddle_positions["left"],
+                                "right_y": paddle_positions["right"],
+                                "left_input": player_inputs["left"],
+                                "right_input": player_inputs["right"],
+                                "RematchRequestVar": len(RematchRequestVar),
+                                "restart": RestartGame,
+                                **game_state  #HK: Add game state into this update message. 
+                            }
+
+                            outgoing = (json.dumps(update) + "\n").encode("utf-8")
+
+                            for connection in inputs[1:]:
+                                try:
+                                    connection.sendall(outgoing)
+                                except OSError as e:
+                                    print("Error sending update:", e)
+
+                            print("SENT PADDLES:", update)
+
+handleConnections()
+
+# while True:
+#     readable, _, _ = select.select(inputs, [], [], 1)
+#     for s in readable:
+#         if s is server_socket:
+#             # new client
+#             conn, addr = server_socket.accept()
+#             print(f"[NEW CONNECTION] {addr}")
+#             inputs.append(conn)
+#             buffers[conn] = ""
+
+#             # Assign Left or Right paddle
+#             if NumClients%2 == 0:      # Mod 2 so that if we have multiple clients we can use this for another game. 
+#                 PaddleSide = "left"
+#             else:
+#                 PaddleSide = "right"
+
+#             NumClients+= 1 # Updating Variable.
+
+#             # Send required info for playgame function in pongClient.py
+#             conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
 
 
            
-            for connection in inputs[1:]:
-                try:
-                    connection.sendall(f"{NumClients}".encode())
-                except OSError as e:
-                    print("Error sending update:", e)
-            #conn.send(f"{NumClients}".encode())
+#             for connection in inputs[1:]:
+#                 try:
+#                     connection.sendall(f"{NumClients}".encode())
+#                 except OSError as e:
+#                     print("Error sending update:", e)
+#             #conn.send(f"{NumClients}".encode())
 
         
-        else:
-            # message from existing client
-            data = s.recv(1024)
+#         else:
+#             # message from existing client
+#             data = s.recv(1024)
 
-            if not data:
-                print("[DISCONNECTED]")
-                inputs.remove(s)
-                buffers.pop(s, None)
-                s.close()
+#             if not data:
+#                 print("[DISCONNECTED]")
+#                 inputs.remove(s)
+#                 buffers.pop(s, None)
+#                 s.close()
 
-                NumClients -= 1
+#                 NumClients -= 1
 
-            else:
-                buffers[s] += data.decode("utf-8")
+#             else:
+#                 buffers[s] += data.decode("utf-8")
 
-                while "\n" in buffers[s]:
-                    message, buffers[s] = buffers[s].split("\n", 1)
+#                 while "\n" in buffers[s]:
+#                     message, buffers[s] = buffers[s].split("\n", 1)
 
-                    if message:
-                        print("Received:", message)
+#                     if message:
+#                         print("Received:", message)
                         
-                        # HK: Gets the packet from the client when they press "p"
-                        RestartGame = UseDataFromClient(s.getpeername(), message)
+#                         # HK: Gets the packet from the client when they press "p"
+#                         RestartGame = UseDataFromClient(s.getpeername(), message)
 
-                        update = {
-                            "type": "paddles",
-                            "left_y": paddle_positions["left"],
-                            "right_y": paddle_positions["right"],
-                            "left_input": player_inputs["left"],
-                            "right_input": player_inputs["right"],
-                            "RematchRequestVar": len(RematchRequestVar),
-                            "restart": RestartGame,
-                            **game_state  #HK: Add game state into this update message. 
-                        }
+#                         update = {
+#                             "type": "paddles",
+#                             "left_y": paddle_positions["left"],
+#                             "right_y": paddle_positions["right"],
+#                             "left_input": player_inputs["left"],
+#                             "right_input": player_inputs["right"],
+#                             "RematchRequestVar": len(RematchRequestVar),
+#                             "restart": RestartGame,
+#                             **game_state  #HK: Add game state into this update message. 
+#                         }
 
-                        outgoing = (json.dumps(update) + "\n").encode("utf-8")
+#                         outgoing = (json.dumps(update) + "\n").encode("utf-8")
 
-                        for connection in inputs[1:]:
-                            try:
-                                connection.sendall(outgoing)
-                            except OSError as e:
-                                print("Error sending update:", e)
+#                         for connection in inputs[1:]:
+#                             try:
+#                                 connection.sendall(outgoing)
+#                             except OSError as e:
+#                                 print("Error sending update:", e)
 
-                        print("SENT PADDLES:", update)
-
-
-
-
-
-# */
-
-
+#                         print("SENT PADDLES:", update)
