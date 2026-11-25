@@ -1,29 +1,40 @@
 # =================================================================================================
-# Contributing Authors:     Chenxiang Jiang
-# Email Addresses:          cji233@uky.edu
-# Date:                     11/8/2026
+# Contributing Authors:     Chenxiang Jiang (CJ), Holden Kennedy (HK), Omar Ellala (OE)
+# Email Addresses:          cji233@uky.edu, hlke229@uky.edu, Omar.Ellala@uky.edu                ?
+# Date:                     11/24/2026
+
 # Purpose:                  Implemented client-server communication for passing player inputs
 #                           in the multiplayer Pong game. Sends paddle positions and movement
 #                           commands (UP, DOWN, NOP) using TCP sockets and JSON. Also handles
 #                           receiving, parsing, and storing game information to support
 #                           synchronization between players.
+
+# Concept Overview:         The Server acts as a middle man for all data. The players have their
+#                           imputs severed from their own game so that no player directly 
+#                           interacts with their screen. The inputs are instead sent to the server
+#                           which collects inputs from both and then sends both players inputs to 
+#                           each other. The server also collects information regarding their sync 
+#                           value, ball location, etc and uses that to constantly tweak the games
+#                           for both parties. The core concept is that whatever you see on your 
+#                           screen is representative of what the server sent to both parties, there
+#                           is not a sync issue between what your screen displays and what the 
+#                           oppenents displays under decent conditions due to the forced delay.
+             
 # Misc:                     Used threading and message buffering to prevent network operations
-#                           from interrupting gameplay.
+#                           from interrupting gameplay. Uses code from socket programming 
+#                           lectures early in this project as a starting place and some code
+#                           elements remain, particularly example 6. Some comments that were
+#                           given as guidence from the project assignemtn have remained. Debugging
+#                           and information providng code such as print statements containing 
+#                           positions etc has been left aswell.
 # =================================================================================================
 
-# =================================================================================================
-# Contributing Authors:	    Holden Kennedy  ,
-# Email Addresses:          hlke229@uky.edu , 
-# Date:                     11/7/2026
-# Purpose:                  This is the server code. It will handle all server responsibilities including receiving and echoing data. 
-# Misc:                     <Not Required.  Anything else you might want to include>
-# =================================================================================================
 
 import socket
 import threading
-import select #added for select.select()
+import select #HK: added for select.select() used in programming example
 import json
-import time
+import time # HK: Used to add a delay between the join sever information and sending the num clients. 
 from turtle import left
 
 # Use this file to write your server logic
@@ -33,8 +44,10 @@ from turtle import left
 # I suggest you use the sync variable in pongClient.py to determine how out of sync your two
 # clients are and take actions to resync the games
 
-# constant for the screen width and height
-screenWidth, screenHeight = 800, 600
+# HK: constant for the screen width and height
+screenWidth:int = 800
+screenHeight:int = 600
+RestartGame:bool = False
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -50,8 +63,10 @@ print(f"Server listening on {HOST}:{PORT}")
 # First start, I am using the code from part 2, exmp 6 from the socket lectures.
 
 # A boolean to use to know if the connection is left or right. 
+# HK: Variables to use to know if the number of clients 
 NumClients:int = 0
-# Initialize the paddle positions and player inputs
+
+# CJ: Stores both players' paddle positions and movement inputs for synchronization.
 paddle_positions = {
     "left": 300,
     "right": 300
@@ -62,7 +77,8 @@ player_inputs = {
 }
 ball_position = [screenWidth // 2, screenHeight // 2]
 
-# Dictionary for the ball and score
+
+# HK: Dictionary for the ball and score, uses the same format as the inputs
 game_state = {
     "sync": 0,
     "ball_x": 400,
@@ -77,6 +93,9 @@ game_state = {
 # HK: A variable to decide if players agree to a rematch. 
 RematchRequestVar = set()
 
+
+# HK: I created this function as empty
+# CJ: Parses incoming JSON messages and updates the corresponding player data. 
 def UseDataFromClient(addr, data):
     try:
         message = json.loads(data)
@@ -102,6 +121,9 @@ def UseDataFromClient(addr, data):
                     print("Moving paddle down for side:", side)
                     paddle_positions[side] = min(screenHeight - 100, paddle_positions[side] + 20)
         # Only updates using the player with the higher sync value.
+        # HK: Updates the ball position. Does this by use the paddle with a higher sync as the true position. 
+        #   This works due to the sync variable manipulation. When a paddle hits the ball "it's" sync value is increased by 5.
+        #   This causes the "true" ball position to be from the player who has the most interaction with teh ball. 
         client_sync = message.get("sync", 0)
         if client_sync > game_state["sync"]:
             game_state["sync"] = client_sync
@@ -112,6 +134,7 @@ def UseDataFromClient(addr, data):
             game_state["lScore"] = message.get("lScore", game_state["lScore"])
             game_state["rScore"] = message.get("rScore", game_state["rScore"])
 
+        # CJ: Validates and stores each player's movement input and paddle position.
         if side in player_inputs:
             if input_command in ("UP", "DOWN", "NOP"):
                 player_inputs[side] = input_command
@@ -119,26 +142,34 @@ def UseDataFromClient(addr, data):
             if isinstance(paddle_y, int):
                 paddle_positions[side] = max(0, min(550, paddle_y))
 
-            print("Combined player inputs:", player_inputs)
-            print("Combined paddle positions:", paddle_positions)
+            #print("Combined player inputs:", player_inputs)
+            #print("Combined paddle positions:", paddle_positions)
 
 
-    # HK: An alternative "if" branch for deciding a rematch
+    # HK: An alternative "if" branch for deciding a rematch. Uses the input system for the paddle movement. p = "Rematch"
     elif message.get("action") == "Rematch":
         side = message.get("side")
 
-        # Both sides have to agree.
+        # HK: Both sides have to agree.
         if side in ("left", "right"):
             RematchRequestVar.add(side)
 
             print(f"Rematch requested by {side}. Total: {len(RematchRequestVar)}") #Prints info on the decision
 
             if len(RematchRequestVar) >= 2:
-                RematchRequestVar.clear() # Reset for next game
+                RematchRequestVar.clear() # HK: Reset for next game
 
-                #HK: The initial values for the game to reset for. 
+                # HK: After testing reseting sync to 0 can cause a race condition where one game is reset but the
+                #      other sends an update with a higher sync and causes the already reset game to gain the old values.
+                #      by adding to the sync value and sending both the new variable the one that clears first will have  
+                #      the higher sync. This should fix the issue, change 100 to a higher value is problem persists.
+                IncreasedSync:int = game_state["sync"] + 100
+
+
+                #HK: By reseting all values the game is effectively reset. This resets all except sync for the reason 
+                #   listed above
                 game_state.update({
-                    "sync": 0,
+                    "sync": IncreasedSync,
                     "ball_x": 400,
                     "ball_y": 300,
                     "ball_vx": -5,
@@ -147,7 +178,7 @@ def UseDataFromClient(addr, data):
                     "rScore": 0
                 })
 
-                return True # Both players agree
+                return True # HK: Both players agree
 
     return False
 
@@ -261,6 +292,8 @@ handleConnections()
 #             # Send required info for playgame function in pongClient.py
 #             conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
 
+            # HK: Unsure if this is needed, it should help sync the games, splits the starting the playgame function and drawing/starting the game.
+#            time.sleep(1/120) #HK: Half a frame. Not noticable. 
 
            
 #             for connection in inputs[1:]:

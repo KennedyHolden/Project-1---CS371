@@ -32,7 +32,7 @@ import queue
 from assets.code.helperCode import *
 
 
-PaddleMovement:int = "" # HK: Global variable for replacing "paddel.moving"
+PaddleMovement = "" # HK: Global variable for replacing "paddel.moving"
 WinningValue:int = 2 # HK: Replaces the magic value. How many points is needed to win. 
 BonusSync:int = 5 # HK: A value that is added to sync to help for changing who is in charge. 
 
@@ -89,9 +89,10 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
     # Variable to keep track of Rematch Requests
     RematchRequestVar = 0
 
-    # Week 1 (Chen):Set up a queue for sending messages to the server, Converts Python dictionaries into JSON. Send those messages to the server through TCP. Uses background thread so sending doesn't block the main game loop.
-    send_queue = queue.Queue(maxsize=10) # I changed the maxsize to 10 so it doesn't block so often. 
+    # CJ: Queues outgoing messages so networking does not interrupt gameplay
+    send_queue = queue.Queue(maxsize=10)    
 
+    # CJ: Converts queued messages into JSON and sends them to the server over TCP.
     def network_sender():
         while True:
             message = send_queue.get()
@@ -103,15 +104,18 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 print("Network error:", e)
                 break
 
-    threading.Thread( # Creates a new thread to run the network_sender function in the background, allowing it to send messages without blocking the main game loop.
-        target=network_sender, # tells the thread to run the network_sender function
-        daemon=True #daemon=True means the thread will automatically close when the main program exits
-    ).start() # starts the new thread
-    
+    # CJ: Runs the sender in a background thread to keep gameplay responsive.
+    threading.Thread( 
+        target=network_sender, 
+        daemon=True
+    ).start()
+
+    # CJ: Stores received server messages for processing by the game loop.
     incoming_messages = queue.Queue()
 
+    # CJ: Receives TCP data and reconstructs complete JSON messages using newline delimiters.
     def network_receiver():
-        buffer = "" # Creates an empty string  called buffer bc TCP doesn't guarantee that messages will be received in the same chunks they were sent. The buffer is used to store any partial messages that are received, so they can be combined with future data to form complete messages.
+        buffer = "" 
 
         while True:
             try:
@@ -134,6 +138,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 print("Receive error:", e)
                 break
 
+    # CJ: Runs the receiver in a background thread to avoid blocking gameplay.
     threading.Thread(
         target=network_receiver,
         daemon=True
@@ -190,7 +195,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         #latestLeft = None
         #latestRight = None
 
-        # Added this section to clear the network queue. 
+        # CJ: Processes queued server updates without blocking the game loop. 
         # Omar - reusing it to make the player and opponent paddle position themselves based on the latest input  
         while not incoming_messages.empty():
             print("eijfaieghawoigh")
@@ -229,6 +234,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 if latest_state.get("restart"):
                     lScore = 0
                     rScore = 0
+                    sync = 0
                     RematchRequestVar = 0
                     leftPaddle.rect.y = paddleStartPosY
                     rightPaddle.rect.y = paddleStartPosY
@@ -300,18 +306,26 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 
             # If the ball hits a paddle
             if ball.rect.colliderect(playerPaddleObj.rect):
-                #bounceSound.play()
-                ball.hitPaddle(playerPaddleObj.rect.center[1])
 
-                sync += BonusSync # This is done so that the player who just hit the ball should have the advangage on updating the score and ball positoin.
+                # HK: Only count a hit if the ball is moving towards the players paddle.
+                #   If ball is moving left and player = left or vice versa
+                if (playerPaddle == "left" and ball.xVel < 0) or( playerPaddle == "right" and ball.xVel > 0):
+                    bounceSound.play()
+                    ball.hitPaddle(playerPaddleObj.rect.center[1])
+
+                    # This is done so that the player who just hit the ball should have the advangage on updating the score and ball positoin.
+                    sync += BonusSync 
             
             elif ball.rect.colliderect(opponentPaddleObj.rect):
-                #bounceSound.play()
-                ball.hitPaddle(opponentPaddleObj.rect.center[1])
+                # HK: Only count a hit if the ball is moving towards the players paddle.
+                #   If ball is moving right and player = left or vice versa
+                if (playerPaddle == "left" and ball.xVel < 0) or( playerPaddle == "right" and ball.xVel > 0):
+                    bounceSound.play()
+                    ball.hitPaddle(opponentPaddleObj.rect.center[1])
                 
             # If the ball hits a wall
             if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
-                #bounceSound.play()
+                bounceSound.play()
                 ball.hitWall()
             
             pygame.draw.rect(screen, WHITE, ball.rect)
@@ -335,9 +349,10 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         # This number should be synchronized between you and your opponent.  If your number is larger
         # then you are ahead of them in time, if theirs is larger, they are ahead of you, and you need to
         # catch up (use their info)
-        sync += 1 # sync is used to keep track of the number of game loop iterations, which can be used to synchronize game state between players.
-       
-        if sync % 1 == 0: # when sync is a multiple of 6, send an update to the server with the current paddle position, movement direction, and sync value. This helps keep the game state synchronized between players.
+        sync += 1 
+
+        # CJ: Sends periodic paddle and game-state updates to keep both clients synchronized.
+        if sync % 2 == 0: 
             message = {
                 "type": "paddle",
                 "side": playerPaddle,
@@ -353,8 +368,8 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 "lScore": lScore,
                 "rScore": rScore
             }
-
-            try: # attempt to run this code. If a matching exception occurs, run the code in the except block instead of crashing the program.
+            # CJ: Skips an outgoing update when the queue is full to prevent blocking.
+            try: 
                 send_queue.put_nowait(message)
             except queue.Full:
                 pass
