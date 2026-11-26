@@ -47,7 +47,7 @@ from turtle import left
 # HK: constant for the screen width and height
 screenWidth:int = 800
 screenHeight:int = 600
-RestartGame:bool = False
+
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -66,42 +66,16 @@ print(f"Server listening on {HOST}:{PORT}")
 # HK: Variables to use to know if the number of clients 
 NumClients:int = 0
 
-# CJ: Stores both players' paddle positions and movement inputs for synchronization.
-paddle_positions = {
-    "left": 300,
-    "right": 300
-}
-player_inputs = {
-    "left": "NOP",
-    "right": "NOP"
-}
-ball_position = [screenWidth // 2, screenHeight // 2]
-
-
-# HK: Dictionary for the ball and score, uses the same format as the inputs
-game_state = {
-    "sync": 0,
-    "ball_x": 400,
-    "ball_y": 300,
-    "ball_vx": -5,
-    "ball_vy": 0,
-    "lScore": 0,
-    "rScore": 0
-}
-
-
-# HK: A variable to decide if players agree to a rematch. 
-RematchRequestVar = set()
 
 
 # HK: I created this function as empty
 # CJ: Parses incoming JSON messages and updates the corresponding player data. 
-def UseDataFromClient(addr, data):
+def UseDataFromClient(addr, data, paddle_positions, player_inputs, game_state, RematchRequestVar):
     try:
         message = json.loads(data)
     except json.JSONDecodeError:
         print("Could not parse message:", repr(data))
-        return
+        return paddle_positions, player_inputs, game_state, RematchRequestVar, False
 
     if message.get("type") == "paddle":
         side = message.get("side")
@@ -178,9 +152,9 @@ def UseDataFromClient(addr, data):
                     "rScore": 0
                 })
 
-                return True # HK: Both players agree
+                return paddle_positions, player_inputs, game_state, RematchRequestVar, True # HK: Both players agree
 
-    return False
+    return paddle_positions, player_inputs, game_state, RematchRequestVar, False
 
 # Pull the IP address and port number from the user from the other function
 # Push it into a queue
@@ -222,6 +196,36 @@ def handleConnections():
 
 
 def playGame(player1, player2):
+    inputs = [server_socket]
+    # Initial game state variables
+    RestartGame:bool = False
+    # CJ: Stores both players' paddle positions and movement inputs for synchronization.
+    paddle_positions = {
+        "left": 300,
+        "right": 300
+    }
+    player_inputs = {
+        "left": "NOP",
+        "right": "NOP"
+    }
+    ball_position = [screenWidth // 2, screenHeight // 2]
+
+
+    # HK: Dictionary for the ball and score, uses the same format as the inputs
+    game_state = {
+        "sync": 0,
+        "ball_x": 400,
+        "ball_y": 300,
+        "ball_vx": -5,
+        "ball_vy": 0,
+        "lScore": 0,
+        "rScore": 0
+    }
+
+
+    # HK: A variable to decide if players agree to a rematch. 
+    RematchRequestVar = set()
+
     print("Starting a game with client", player1, "and", player2)
     inputs.append(player1)
     inputs.append(player2)
@@ -246,7 +250,7 @@ def playGame(player1, player2):
                             print("Received:", message)
                             
                             # HK: Gets the packet from the client when they press "p"
-                            RestartGame = UseDataFromClient(s.getpeername(), message)
+                            paddle_positions, player_inputs, game_state, RematchRequestVar, RestartGame = UseDataFromClient(s.getpeername(), message, paddle_positions, player_inputs, game_state, RematchRequestVar)
 
                             update = {
                                 "type": "paddles",
@@ -263,7 +267,7 @@ def playGame(player1, player2):
 
                             for connection in inputs[1:]:
                                 try:
-                                    connection.sendall(outgoing)
+                                    connection.send(outgoing)
                                 except OSError as e:
                                     print("Error sending update:", e)
 
