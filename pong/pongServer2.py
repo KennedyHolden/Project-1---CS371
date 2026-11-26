@@ -88,7 +88,7 @@ player_inputs = {
     "left": "NOP",
     "right": "NOP"
 }
-ball_position:float = [screenWidth // 2, screenHeight // 2]
+# ball_position:float = [screenWidth // 2, screenHeight // 2]
 
 
 # HK: Dictionary for the ball and score, uses the same format as the inputs
@@ -345,3 +345,82 @@ while True:
 
 
 
+
+
+# while True:
+#     readable, _, _ = select.select(inputs, [], [], 1)
+#     for s in readable:
+#         if s is server_socket:
+#             # new client
+#             conn, addr = server_socket.accept()
+#             print(f"[NEW CONNECTION] {addr}")
+#             inputs.append(conn)
+#             buffers[conn] = ""
+
+#             # Assign Left or Right paddle
+#             if NumClients%2 == 0:      # Mod 2 so that if we have multiple clients we can use this for another game. 
+#                 PaddleSide = "left"
+#             else:
+#                 PaddleSide = "right"
+
+#             NumClients+= 1 # Updating Variable.
+
+#             # Send required info for playgame function in pongClient.py
+#             conn.send(f"{screenWidth},{screenHeight},{PaddleSide}".encode()) # Hard Coded. 
+
+            # HK: Unsure if this is needed, it should help sync the games, splits the starting the playgame function and drawing/starting the game.
+#            time.sleep(1/120) #HK: Half a frame. Not noticable. 
+
+           
+#             for connection in inputs[1:]:
+#                 try:
+#                     connection.sendall(f"{NumClients}".encode())
+#                 except OSError as e:
+#                     print("Error sending update:", e)
+#             #conn.send(f"{NumClients}".encode())
+
+        
+#         else:
+#             # message from existing client
+#             data = s.recv(1024)
+
+#             if not data:
+#                 print("[DISCONNECTED]")
+#                 inputs.remove(s)
+#                 buffers.pop(s, None)
+#                 s.close()
+
+#                 NumClients -= 1
+
+#             else:
+#                 buffers[s] += data.decode("utf-8")
+
+#                 while "\n" in buffers[s]:
+#                     message, buffers[s] = buffers[s].split("\n", 1)
+
+#                     if message:
+#                         print("Received:", message)
+                        
+#                         # HK: Gets the packet from the client when they press "p"
+#                         RestartGame = UseDataFromClient(s.getpeername(), message)
+
+#                         update = {
+#                             "type": "paddles",
+#                             "left_y": paddle_positions["left"],
+#                             "right_y": paddle_positions["right"],
+#                             "left_input": player_inputs["left"],
+#                             "right_input": player_inputs["right"],
+#                             "RematchRequestVar": len(RematchRequestVar),
+#                             "restart": RestartGame,
+#                             **game_state  #HK: Add game state into this update message. 
+#                         }
+
+#                         outgoing = (json.dumps(update) + "\n").encode("utf-8")
+
+#                         for connection in inputs[1:]:
+#                             try:
+#                                 connection.sendall(outgoing)
+#                             except OSError as e:
+#                                 print("Error sending update:", e)
+
+#                         print("SENT PADDLES:", update)

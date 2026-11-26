@@ -1,6 +1,6 @@
 # =================================================================================================
-# Contributing Authors:     Chenxiang Jiang
-# Email Addresses:          cji233@uky.edu
+# Contributing Authors:     Chenxiang Jiang, Holden Kennedy, Omar Ellala
+# Email Addresses:          cji233@uky.edu, hlke229@uky.edu, Omar.Ellala@uky.edo
 # Date:                     11/8/2026
 # Purpose:                  Implemented client-server communication for passing player inputs
 #                           in the multiplayer Pong game. Sends paddle positions and movement
@@ -11,16 +11,8 @@
 #                           from interrupting gameplay.
 # =================================================================================================
 
-# =================================================================================================
-# Contributing Authors:	    Holden Kennedy  ,
-# Email Addresses:          hlke229@uky.edu ,
-# Date:                     11/7/2026
-# Purpose:                  This is the client code. It will handle all client responsibilities including sending and receiving data.
-# Misc:                     <Not Required.  Anything else you might want to include>
-# =================================================================================================
 
 from xmlrpc import client
-
 import pygame
 import tkinter as tk
 import sys
@@ -32,11 +24,9 @@ import queue
 from assets.code.helperCode import *
 
 
-PaddleMovement = "" # HK: Global variable for replacing "paddel.moving"
+# PaddleMovement = "" # HK: Global variable for replacing "paddel.moving" DEPRECATED
 WinningValue:int = 2 # HK: Replaces the magic value. How many points is needed to win. 
 BonusSync:int = 5 # HK: A value that is added to sync to help for changing who is in charge. 
-
-
 
 
 # This is the main game loop.  For the most part, you will not need to modify this.  The sections
@@ -81,34 +71,44 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         opponentPaddleObj = leftPaddle
         playerPaddleObj = rightPaddle
 
-    lScore = 0
-    rScore = 0
+    lScore:int = 0
+    rScore:int = 0
 
-    sync = 0
+    sync:int = 0
 
     # Variable to keep track of Rematch Requests
-    RematchRequestVar = 0
+    RematchRequestVar:int = 0
 
     # CJ: Queues outgoing messages so networking does not interrupt gameplay
-    send_queue = queue.Queue(maxsize=10)    
+    send_queue = queue.Queue(maxsize=10)
+    #OE: Create an event so that the client can handle disconnections properly
+    disconnect_event = threading.Event()
 
     # CJ: Converts queued messages into JSON and sends them to the server over TCP.
     def network_sender():
-        while True:
-            message = send_queue.get()
+        while not disconnect_event.is_set():
+            try:
+                message = send_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+
+            if disconnect_event.is_set():
+                break
 
             try:
                 data = json.dumps(message) + "\n" # converts python dictionary into a JSON string. 
                 client.sendall(data.encode("utf-8")) # sends the JSON string (converted into bytes) to the server through TCP.
             except OSError as e:
-                print("Network error:", e)
+                if not disconnect_event.is_set():
+                    print("Network error:", e)
                 break
 
     # CJ: Runs the sender in a background thread to keep gameplay responsive.
-    threading.Thread( 
+    sender_thread = threading.Thread(
         target=network_sender, 
         daemon=True
-    ).start()
+    )
+    sender_thread.start()
 
     # CJ: Stores received server messages for processing by the game loop.
     incoming_messages = queue.Queue()
@@ -123,6 +123,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
                 if not data:
                     print("Server disconnected")
+                    disconnect_event.set()
                     break
 
                 buffer += data.decode("utf-8")
@@ -131,11 +132,17 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                     line, buffer = buffer.split("\n", 1) # splits the buffer at the first newline character
 
                     if line: # checks if the line is not empty, true when it has, false when it doesn't.
+                        if line == "DISCONNECT":
+                            print("Opponent disconnected; ending game")
+                            disconnect_event.set()
+                            return
+
                         message = json.loads(line)
                         incoming_messages.put(message)
 
             except (OSError, ValueError) as e:
                 print("Receive error:", e)
+                disconnect_event.set()
                 break
 
     # CJ: Runs the receiver in a background thread to avoid blocking gameplay.
@@ -146,7 +153,7 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
 
 
 
-    while True:
+    while not disconnect_event.is_set():
         # Wiping the screen
         screen.fill((0,0,0))
 
@@ -157,16 +164,14 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_DOWN:
-                    # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
                     playerPaddleObj.moving = "DOWN"
-                    #print("Pressed Down")
+                    #print("Pressed Down") DEBUG
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "DOWN"})
 
                 elif event.key == pygame.K_UP:
-                    # Replaces the playerPaddleObj.moving variable with the global variable PaddleMovement.
                     playerPaddleObj.moving = "UP"
-                    #print("Pressed Up")
+                    #print("Pressed Up") DEBUG
                     #   Uses the network sender funcion by Chen.
                     send_queue.put_nowait({"action": "UP"})
 
@@ -182,28 +187,16 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                 #   Uses the network sender funcion by Chen.
                 #send_queue.put_nowait({"action": ""})
 
-        # =========================================================================================
-        # Your code here to send an update to the server on your paddle's information,
-        # where the ball is and the current score.
-        # Feel free to change when the score is updated to suit your needs/requirements
-        
-        
-        # =========================================================================================
 
         # latest State initalized to None. Error: "cannot access local variable 'latest_state' where it is not associated with a value"
         latest_state = None
-        #latestLeft = None
-        #latestRight = None
 
         # CJ: Processes queued server updates without blocking the game loop. 
         # Omar - reusing it to make the player and opponent paddle position themselves based on the latest input  
         while not incoming_messages.empty():
-            print("eijfaieghawoigh")
             try:
                 latest_state = incoming_messages.get_nowait()
                 if latest_state and latest_state.get("type") == "paddles":
-                    left_input = latest_state.get("left_input", "NOP")
-                    right_input = latest_state.get("right_input", "NOP")
 
 
                     # HK: An if so that the openent cannot change your positoin whith their delay info. 
@@ -223,14 +216,16 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
                         lScore = latest_state.get("lScore", lScore)
                         rScore = latest_state.get("rScore", rScore)
 
-                    print("Left player input:", left_input)
-                    print("Right player input:", right_input)
+                    # left_input = latest_state.get("left_input", "NOP") DEBUG
+                    # right_input = latest_state.get("right_input", "NOP") DEBUG
+                    # print("Left player input:", left_input) DEBUG
+                    # print("Right player input:", right_input) DEBUG
 
                 #HK: Resets the vales when players agree to restart
                 if "RematchRequestVar" in latest_state:
                     RematchRequestVar = latest_state["RematchRequestVar"]
 
-                # Puts all values back to inital
+                # Resets all values back to initial state
                 if latest_state.get("restart"):
                     lScore = 0
                     rScore = 0
@@ -244,8 +239,8 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             except queue.Empty:
                 break
                 
-        if latest_state:
-             print("Server says:", latest_state) #Debug
+        #if latest_state:
+        #   print("Server says:", latest_state) #Debug
 
 
         pass
@@ -297,11 +292,11 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             # If the ball makes it past the edge of the screen, update score, etc.
             if ball.rect.x > screenWidth:
                 lScore += 1
-                #pointSound.play()
+                pointSound.play()
                 ball.reset(nowGoing="left")
             elif ball.rect.x < 0:
                 rScore += 1
-                #pointSound.play()
+                pointSound.play()
                 ball.reset(nowGoing="right")
                 
             # If the ball hits a paddle
@@ -374,16 +369,11 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             except queue.Full:
                 pass
 
-
-        
-
-
-        # =========================================================================================
-        # Send your server update here at the end of the game loop to sync your game with your
-        # opponent's game
-
-        # =========================================================================================
-
+    disconnect_event.set()
+    sender_thread.join(timeout=1)
+    client.close()
+    pygame.quit()
+    return
 
 
 
@@ -436,14 +426,12 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
         print(f"NumPlayers: {NumPlayers}")
         if (NumPlayers%2 == 0):
             playGame(IntScreenWidth, IntScreenHeight, playerPaddle, client)  # User will be either left or right paddle
+            app.quit()
             return
         else:
             errorLabel.config(text=f"Waiting for another player to join...")
             errorLabel.update()
             print(f"Test 1")
-
-    app.quit()         # Kills the window
-
 
 # This displays the opening screen, you don't need to edit this (but may if you like)
 def startScreen():
